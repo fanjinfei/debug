@@ -1,0 +1,65 @@
+
+scheming_version: 1
+organization_type: organization
+
+about: 'open.canada.ca: organization metadata definition'
+about_url: http://github.com/open-data/ckanext-canada
+catalog_type_label:
+  en: Raw/Geo Data
+  fr: Données/géo
+
+form_languages:
+- en
+- fr
+
+
+#
+#   ORGANIZATION FIELDS
+#
+fields:
+
+- field_name: title
+  label:
+    en: English Name
+    fr: Name en anglais
+  form_snippet: null
+- field_name: title_fr
+  label:
+    en: French Name
+    fr: Nom en fran\u00e7ais
+  form_snippet: null
+
+- field_name: desc
+  label:
+    en: Description
+    fr: 
+  form_snippet: text.html
+
+- field_name: shortform
+  label:
+    en: Abbreviated Name English
+    fr: 
+  form_snippet: null
+
+- field_name: shortform_fr
+  label:
+    en: Abbreviated Name French
+    fr: 
+  form_snippet: null
+
+- field_name: department_number
+  label:
+    en: Department Number
+    fr: 
+  form_snippet: null
+- field_name: ati_email
+  label:
+    en: ATI Email
+    fr: 
+  form_snippet: null
+- field_name: opengov_email
+  label:
+    en: Open Government Email
+    fr: 
+  form_snippet: null
+
