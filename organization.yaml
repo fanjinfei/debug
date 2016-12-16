@@ -18,48 +18,44 @@ form_languages:
 #
 fields:
 
-- field_name: title
+- preset: canada_org_title
+- field_name: name
   label:
-    en: English Name
-    fr: Name en anglais
+    en: URL
+    fr: URL
   form_snippet: null
-- field_name: title_fr
-  label:
-    en: French Name
-    fr: Nom en fran\u00e7ais
-  form_snippet: null
-
-- field_name: desc
-  label:
-    en: Description
-    fr: 
-  form_snippet: text.html
-
 - field_name: shortform
   label:
     en: Abbreviated Name English
-    fr: 
-  form_snippet: null
+    fr: Abbreviated Name English
+  form_snippet: text.html
 
 - field_name: shortform_fr
   label:
     en: Abbreviated Name French
-    fr: 
+    fr: Abbreviated Name French
+  form_snippet: text.html
+
+- field_name: desc
+  label:
+    en: Description
+    fr: Description
   form_snippet: null
+
 
 - field_name: department_number
   label:
     en: Department Number
-    fr: 
-  form_snippet: null
+    fr: Department Number
+  form_snippet: text.html
 - field_name: ati_email
   label:
-    en: ATI Email
-    fr: 
-  form_snippet: null
+    en: ATI E-mail
+    fr: ATI E-mail
+  form_snippet: text.html
 - field_name: opengov_email
   label:
-    en: Open Government Email
-    fr: 
-  form_snippet: null
+    en: Open Government E-mail
+    fr: Open Government E-mail
+  form_snippet: text.html
 
