@@ -1,0 +1,24 @@
+diff --git a/ckanext/recombinant/templates/recombinant/snippets/xls_upload.html b/ckanext/recombinant/templates/recombinant/snippets/xls_upload.html
+index 5f3fe08..7563e7e 100644
+--- a/ckanext/recombinant/templates/recombinant/snippets/xls_upload.html
++++ b/ckanext/recombinant/templates/recombinant/snippets/xls_upload.html
+@@ -11,13 +11,17 @@
+     <label for="xls_update" class="required" aria-required="true">{{ _('Upload') }}:
+       <strong aria-required="true" class="required">{{ _('(required)') }}</strong>
+     </label>
++    <div style="display: block" >
+     <input required
+-      class="form-control"
+-      style="height: auto"
++      style="height:0;  width: 0; visibility: hidden;"
+       type="file"
+       name="xls_update"
+       id="xls_update"
++	onchange="document.getElementById('fakeFileBtn').value=this.value;"
+       accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
++    <input id="fakeFileBtn" style="display: inline-block" disabled="disabled"/>
++	<button type="button" style="display: inline-block" onclick="$('#xls_update').trigger('click');">{{ _('Browse') }}</button>
++    </div>
+   </div>
+   <div class="form-errors">
+   {% if errors %}
