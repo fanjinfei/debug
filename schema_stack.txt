@@ -1,0 +1,50 @@
+odule ckan.controllers.package:798 in edit         view
+>>  return self._save_edit(id, context, package_type=package_type)
+Module ckan.controllers.package:1028 in _save_edit         view
+>>  pkg = get_action('package_update')(context, data_dict)
+Module ckan.logic:419 in wrapped         view
+>>  result = _action(context, data_dict, **kw)
+Module ckan.logic.action.update:388 in package_update         view
+>>  else _get_action('package_show')(context, {'id': data_dict['id']})
+Module ckan.logic:419 in wrapped         view
+>>  result = _action(context, data_dict, **kw)
+Module ckan.logic.action.get:1100 in package_show         view
+>>  item.after_show(context, package_dict)
+Module ckanext.canada.plugins:429 in after_show         view
+>>  data_dict["organization"] = helpers._query_organization_extras(context, data_dict["organization"])
+Module ckanext.canada.helpers:86 in _query_organization_extras         view
+>>  data_dict = group_or_org_plugin_dictize(context, data_dict, False, True)
+Module ckanext.canada.helpers:64 in group_or_org_plugin_dictize         view
+>>  'organization_show' if is_org else 'group_show')
+Module ckan.lib.plugins:226 in plugin_validate         view
+>>  result = plugin.validate(context, data_dict, schema, action)
+Module ckanext.scheming.plugins:189 in validate         view
+>>  return navl_validate(data_dict, schema, context)
+Module ckan.lib.navl.dictization_functions:238 in validate         view
+>>  converted_data, errors = _validate(flattened, schema, validators_context)
+Module ckan.lib.navl.dictization_functions:299 in _validate         view
+>>  convert(converter, key, converted_data, errors, context)
+Module ckan.lib.navl.dictization_functions:192 in convert         view
+>>  converter(key, converted_data, errors, context)
+Module ckanext.scheming.converters:17 in convert_from_extras_group         view
+>>  and 'key' in data_value
+TypeError: argument of type 'Missing' is not iterable
+Extra Features
+>>	Display the lines of code near each part of the traceback
+	Show a debug prompt to allow you to directly debug the code at the traceback
+Online Assistance
+
+    Overview
+    Search Mail Lists
+    Post Traceback
+
+ 
+Looking for help?
+
+Here are a few tips for troubleshooting if the above traceback isn't helping out.
+
+    Search the mail list
+    Post the traceback, and ask for help on IRC
+    Post a message to the mail list, referring to the posted traceback
+
+

@@ -1,0 +1,28 @@
+File "/home/jffan/ckan/lib/default/src/ckan/ckan/model/modification.py", line 86, in notify
+    observer.notify(entity, operation)
+  File "/home/jffan/ckan/lib/default/src/ckan/ckan/lib/search/__init__.py", line 128, in notify
+    {'id': entity.id}),
+  File "/home/jffan/ckan/lib/default/src/ckan/ckan/logic/__init__.py", line 419, in wrapped
+    result = _action(context, data_dict, **kw)
+  File "/home/jffan/ckan/lib/default/src/ckan/ckan/logic/action/get.py", line 1100, in package_show
+    item.after_show(context, package_dict)
+  File "/home/jffan/ckan/lib/default/src/ckanext-canada/ckanext/canada/plugins.py", line 429, in after_show
+    data_dict["organization"] = helpers._query_organization_extras(context, data_dict["organization"])
+  File "/home/jffan/ckan/lib/default/src/ckanext-canada/ckanext/canada/helpers.py", line 86, in _query_organization_extras
+    data_dict = group_or_org_plugin_dictize(context, data_dict, False, True)
+  File "/home/jffan/ckan/lib/default/src/ckanext-canada/ckanext/canada/helpers.py", line 64, in group_or_org_plugin_dictize
+    'organization_show' if is_org else 'group_show')
+  File "/home/jffan/ckan/lib/default/src/ckan/ckan/lib/plugins.py", line 226, in plugin_validate
+    result = plugin.validate(context, data_dict, schema, action)
+  File "/home/jffan/ckan/lib/default/src/ckanext-scheming/ckanext/scheming/plugins.py", line 189, in validate
+    return navl_validate(data_dict, schema, context)
+  File "/home/jffan/ckan/lib/default/src/ckan/ckan/lib/navl/dictization_functions.py", line 238, in validate
+    converted_data, errors = _validate(flattened, schema, validators_context)
+  File "/home/jffan/ckan/lib/default/src/ckan/ckan/lib/navl/dictization_functions.py", line 299, in _validate
+    convert(converter, key, converted_data, errors, context)
+  File "/home/jffan/ckan/lib/default/src/ckan/ckan/lib/navl/dictization_functions.py", line 192, in convert
+    converter(key, converted_data, errors, context)
+  File "/home/jffan/ckan/lib/default/src/ckanext-scheming/ckanext/scheming/converters.py", line 17, in convert_from_extras_group
+    and 'key' in data_value
+TypeError: argument of type 'Missing' is not iterable
+
