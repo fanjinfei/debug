@@ -1,0 +1,42 @@
+public function getComments($articleID) {
+    $sql = "SELECT * FROM comments WHERE articleid = $articleID";
+    $database = DatabaseFactory::getFactory()->Connect();
+    $stmt = $database->query($sql);  
+    $res = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if($res!=NULL)
+    {
+        $references = array();
+        $tree = array();
+        foreach ($res as $id=> &$node) {
+            // Use id as key to make a references to the tree and initialize it with node reference.
+            $references[$node['comment_id']] = &$node;
+
+            // Add empty array to hold the children/subcategories
+            $node['children'] = array();
+
+            // Get your root node and add this directly to the tree
+            if ($node['comment_respond_to']==0) {
+                $tree[$node['comment_id']] = &$node;
+            } else {
+                // Add the non-root node to its parent's references
+                $references[$node['comment_respond_to']]['children'][$node['comment_id']] = &$node;
+            }
+        }
+
+        return $tree;
+
+foo($comments);
+
+function foo($arr, $level=0) {
+    $prepend = str_repeat(' ', $level); // <- the $level thingy is not necessary; it's only in here to get a bit prettier output
+
+    echo $prepend, '<ul>', PHP_EOL;
+    foreach($arr as $comment) {
+        echo $prepend, '    <li>', $comment['comment_date'], ' ', htmlentities($comment['comment_comment']), PHP_EOL;
+        if ( !empty($comment['children']) ) {
+            foo($comment['children'], $level+1); // recurse into the next level
+        }
+        echo $prepend, '    </li>', PHP_EOL;
+    }
+    echo $prepend, '</ul>', PHP_EOL;
+}
