@@ -1,0 +1,14 @@
+diff --git a/ckanext/cloudstorage/storage.py b/ckanext/cloudstorage/storage.py
+index 028af75..aef51a8 100644
+--- a/ckanext/cloudstorage/storage.py
++++ b/ckanext/cloudstorage/storage.py
+@@ -13,6 +13,9 @@ from ckan.lib import munge
+ from libcloud.storage.types import Provider, ObjectDoesNotExistError
+ from libcloud.storage.providers import get_driver
+ 
++import libcloud.security
++libcloud.security.VERIFY_SSL_CERT = False
++
+ 
+ class CloudStorage(object):
+     def __init__(self):
