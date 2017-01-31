@@ -1,0 +1,37 @@
+    Indigenous and Northern Affairs Canada
+http://registry.open.canada.ca/en/organization/aandc-aadnc
+    Agriculture and Agri-Food Canada
+http://registry.open.canada.ca/en/organization/aafc-aac
+    Canadian Northern Economic Development Agency
+http://registry.open.canada.ca/en/organization/cannor
+    Canadian Food Inspection Agency
+http://registry.open.canada.ca/en/organization/cfia-acia
+    Canadian Nuclear Safety Commission
+http://registry.open.canada.ca/en/organization/cnsc-ccsn
+    Canadian Space Agency
+http://registry.open.canada.ca/en/organization/csa-asc
+    Fisheries and Oceans Canada
+http://registry.open.canada.ca/en/organization/dfo-mpo
+    Global Affairs Canada
+http://registry.open.canada.ca/en/organization/dfatd-maecd
+    Elections Canada
+http://registry.open.canada.ca/en/organization/elections
+    Environment and Climate Change Canada
+http://registry.open.canada.ca/en/organization/ec
+    Health Canada
+http://registry.open.canada.ca/en/organization/hc-sc
+    Innovation, Science and Economic Development Canada
+http://registry.open.canada.ca/en/organization/ic
+    National Energy Board
+http://registry.open.canada.ca/en/organization/neb-one
+    Natural Resources Canada
+http://registry.open.canada.ca/en/organization/nrcan-rncan
+    Parks Canada
+http://registry.open.canada.ca/en/organization/pc
+    Public Safety Canada
+http://registry.open.canada.ca/en/organization/ps-sp
+    Statistics Canada
+http://registry.open.canada.ca/en/organization/statcan
+    Transport Canada
+http://registry.open.canada.ca/en/organization/tc
+

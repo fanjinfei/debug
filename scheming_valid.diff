@@ -1,0 +1,46 @@
+diff --git a/ckanext/scheming/templates/scheming/form_snippets/upload.html b/ckanext/scheming/templates/scheming/form_snippets/upload.html
+index d4798ea..b5573d9 100644
+--- a/ckanext/scheming/templates/scheming/form_snippets/upload.html
++++ b/ckanext/scheming/templates/scheming/form_snippets/upload.html
+@@ -12,7 +12,8 @@
+     is_upload=is_upload,
+     upload_label=h.scheming_language_text(field.upload_label),
+     url_label=h.scheming_language_text(field.label),
+-    placeholder=field.form_placeholder
++    placeholder=field.form_placeholder,
++    is_required=field.required
+     )
+ }}
+ {# image_upload macro doesn't support call #}
+diff --git a/ckanext/scheming/validation.py b/ckanext/scheming/validation.py
+index 6545a2e..c0f90a5 100644
+--- a/ckanext/scheming/validation.py
++++ b/ckanext/scheming/validation.py
+@@ -39,6 +39,9 @@ def scheming_choices(field, schema):
+         for c in choices:
+             if value == c['value']:
+                 return value
++        import traceback,sys
++        print (traceback.format_exc())
++        sys.exit(0)
+         raise Invalid(_('unexpected choice "%s"') % value)
+ 
+     return validator
+@@ -96,10 +99,17 @@ def scheming_multiple_choice(field, schema):
+ 
+         selected = set()
+         for element in value:
++            print(key, value, element)
+             if element in choice_values:
+                 selected.add(element)
+                 continue
+             errors[key].append(_('unexpected choice "%s"') % element)
++            import traceback,sys
++            print (traceback.format_exc())
++            traceback.print_stack()
++            print(key, value, element, choice_values)
++#            print (repr(errors))
++            sys.exit(0)
+ 
+         if not errors[key]:
+             data[key] = json.dumps([v for v in
