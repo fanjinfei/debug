@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 import cmd, argparse
-import tempfile
-import code, traceback, signal
+import tempfile, sys
+import code, traceback, signal, pdb
 
 def debug(sig, frame):
     """Interrupt running process, and provide a python prompt for
@@ -14,10 +14,12 @@ def debug(sig, frame):
     i = code.InteractiveConsole(d)
     message  = "Signal received : entering python shell.\nTraceback:\n"
     message += ''.join(traceback.format_stack(frame))
-    #i.interact(message)
     print(message)
+    #i.interact(message)
+    #pdb.set_trace()
 
 def listen():
+    sys.stdin = open('/dev/tty', 'r')
     signal.signal(signal.SIGUSR1, debug)  # Register handler
 
 class WrapperCmdLineArgParser:
