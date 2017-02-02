@@ -1,27 +1,20 @@
 diff --git a/ckan/logic/action/get.py b/ckan/logic/action/get.py
-index 62905e1..76ffb0a 100644
+index 62905e1..6b6aff4 100644
 --- a/ckan/logic/action/get.py
 +++ b/ckan/logic/action/get.py
-@@ -1871,6 +1871,7 @@ def package_search(context, data_dict):
-     schema = (context.get('schema') or
-               logic.schema.default_package_search_schema())
-     data_dict, errors = _validate(data_dict, schema, context)
-+    print('data_dict: ', data_dict)
-     # put the extras back into the data_dict so that the search can
-     # report needless parameters
-     data_dict.update(data_dict.get('__extras', {}))
-@@ -1908,7 +1909,10 @@ def package_search(context, data_dict):
+@@ -1908,8 +1908,10 @@ def package_search(context, data_dict):
          else:
              data_source = 'validated_data_dict'
          data_dict.pop('use_default_schema', None)
 +
          # return a list of package ids
+-        data_dict['fl'] = 'id {0}'.format(data_source)
 +        if data_dict.get('fl')== None:
 +            data_dict['fl'] = 'id {0}'.format(data_source)
-         data_dict['fl'] = 'id {0}'.format(data_source)
  
          # If this query hasn't come from a controller that has set this flag
-@@ -1945,21 +1949,25 @@ def package_search(context, data_dict):
+         # then we should remove any mention of capacity from the fq and
+@@ -1945,21 +1947,25 @@ def package_search(context, data_dict):
          # Add them back so extensions can use them on after_search
          data_dict['extras'] = extras
  

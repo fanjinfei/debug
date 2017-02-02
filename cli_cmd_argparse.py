@@ -2,6 +2,23 @@
 
 import cmd, argparse
 import tempfile
+import code, traceback, signal
+
+def debug(sig, frame):
+    """Interrupt running process, and provide a python prompt for
+    interactive debugging."""
+    d={'_frame':frame}         # Allow access to frame object.
+    d.update(frame.f_globals)  # Unless shadowed by global
+    d.update(frame.f_locals)
+
+    i = code.InteractiveConsole(d)
+    message  = "Signal received : entering python shell.\nTraceback:\n"
+    message += ''.join(traceback.format_stack(frame))
+    #i.interact(message)
+    print(message)
+
+def listen():
+    signal.signal(signal.SIGUSR1, debug)  # Register handler
 
 class WrapperCmdLineArgParser:
     def __init__(self, parser):
@@ -77,5 +94,6 @@ class MyInterpreter(cmd.Cmd):
     def do_quit(self, args):
         return True
     do_EOF = do_quit
+listen()
 mi = MyInterpreter()
 mi.cmdloop()
