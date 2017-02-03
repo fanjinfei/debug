@@ -1,8 +1,14 @@
 #!/usr/bin/env python
 
-import cmd, argparse
+import argparse
 import tempfile, sys
 import code, traceback, signal, pdb
+import readline
+import cmd as ocmd
+
+class Cmd(ocmd.Cmd):
+    def emptyline(self):
+        pass
 
 def debug(sig, frame):
     """Interrupt running process, and provide a python prompt for
@@ -52,7 +58,7 @@ class WrapperCmdLineArgParser:
         f.seek(0)
         return f.read().rstrip()
 
-class SubInterpreter(cmd.Cmd):
+class SubInterpreter(Cmd):
     prompt = "(level2) "
 
     def do_subcommand_1(self, args):
@@ -62,16 +68,45 @@ class SubInterpreter(cmd.Cmd):
         pass
 
     def do_quit(self, args):
+        pass
+        print("exit")
         return True
     do_EOF = do_quit
 
-class MyInterpreter(cmd.Cmd):
+class MyInterpreter(Cmd):
+    prompt = "(#) "
+    def emptyline(self):
+        pass
+    def __init__(self, animals):
+        Cmd.__init__(self)
+
+        self.animals = animals
+
+    def do_add(self, animal):
+        print("Animal {0:s} added".format(animal))
+
+    def completedefault(self, text, line, begidx, endidx):
+        tokens = line.split()
+        if tokens[0].strip() == "add":
+            return self.animal_matches(text)
+        return []
+
+    def animal_matches(self, text):
+        matches = []
+        n = len(text)
+        for word in self.animals:
+            if word[:n] == text:
+                matches.append(word)
+        return matches
+
+
     def do_level1(self, args):
         pass
 
     def do_level2(self, args):
         sub_cmd = SubInterpreter()
         sub_cmd.cmdloop()
+        print('done.')
 
     def do_level3(self, args):
         pass
@@ -96,6 +131,8 @@ class MyInterpreter(cmd.Cmd):
     def do_quit(self, args):
         return True
     do_EOF = do_quit
+
 listen()
-mi = MyInterpreter()
+animals = ["Bear", "Cat", "Cheetah", "Lion", "Zebra"]
+mi = MyInterpreter(animals)
 mi.cmdloop()
