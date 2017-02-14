@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import ckanapi
-import ckan
 from ckanapi.errors import CKANAPIError
 import argparse
 import os
@@ -24,8 +23,9 @@ class CompareRecord():
         pids = []
         while True:
             # a list with a hard upper limit 1000, need to loop 
-            p_records = site.action.package_search(q=q, fl='id', 
+            p_records = site.action.package_search(q=q, fl=['id', 'extras_title_translated', 'extras_status'],
                     use_default_schema=True, start=start, rows=rows)
+            #print( [ v for v in p_records['results'] ] )
             if count == 0:
                 count =  p_records['count']
             for v in p_records['results']:
@@ -39,8 +39,6 @@ class CompareRecord():
         for id in ids:
             try:
                 site.action.package_delete(id=id)
-            except ckan.logic.NotAuthorized as e:
-                raise Exception('API key error')
             except:
                 print ( id, 'delete failed')
             else:
