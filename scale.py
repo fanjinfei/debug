@@ -160,6 +160,7 @@ class Window(QtGui.QDialog):
         # Just some button 
         self.button = QtGui.QPushButton('Plot')
         self.button.clicked.connect(self.plot)
+
  
         self.button1 = QtGui.QPushButton('Zoom')
         self.button1.clicked.connect(self.zoom)
@@ -170,12 +171,19 @@ class Window(QtGui.QDialog):
         self.button3 = QtGui.QPushButton('Home')
         self.button3.clicked.connect(self.home)
  
+        self.button4 = QtGui.QPushButton('Scale')
+        self.button4.clicked.connect(self.scale)
+
+        self.button5 = QtGui.QPushButton('Exit')
+        self.button5.clicked.connect(self.equit)
  
         # set the layout
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
         layout.addWidget(self.button)
+        layout.addWidget(self.button4)
+        layout.addWidget(self.button5)
         layout.addWidget(self.button1)
         layout.addWidget(self.button2)
         layout.addWidget(self.button3)
@@ -189,6 +197,15 @@ class Window(QtGui.QDialog):
         self.toolbar.zoom()
     def pan(self):
         self.toolbar.pan()
+    def equit(self):
+        sys.exit(0)
+
+    def scale(self):
+        data = []
+        for (x,y) in self.data:
+            data.append( (x,y) )
+        self.data= _get_data()
+        self.plot()
          
     def plot(self):
         ''' plot some random stuff 
@@ -200,6 +217,7 @@ class Window(QtGui.QDialog):
         #self.ax.hold(False)
         y = [ v[0] for v in self.data]
         z = [ v[1] for v in self.data] #horizon
+        self.ax.clear()
         self.ax.scatter(z,y, picker=True)
         cursor = FollowDotCursor(self.ax, z, y, tolerance=20, canvas=self.canvas)
         self.canvas.draw()
