@@ -66,7 +66,20 @@ class FollowDotCursor(object):
 
     def __call__(self, event):
         ax = self.ax
-        # event.inaxes is always the current axis. If you use twinx, ax could be
+
+        #line = ax.get_lines()[0]
+        contained, infos = self.dot.contains(event) # line.contains(event)
+        if not contained:                                # eventually exited
+            self.annotation.set_visible(False)
+        else:
+            if not self.annotation.get_visible():             # is entered
+                self.annotation.set_visible(True)         # event.inaxes is always the current axis. If you use twinx, ax could be
+            '''xdata, ydata = line.get_data()
+            ind = infos['ind'][0]
+            annotation = self.annotations[xdata[ind], ydata[ind]]
+            if not annotation.get_visible():             # is entered
+                annotation.set_visible(True)         # event.inaxes is always the current axis. If you use twinx, ax could be
+            '''
         # a different axis.
         if event.inaxes == ax:
             x, y = event.xdata, event.ydata
