@@ -1,0 +1,77 @@
+diff --git a/ckanext/canada/templates/public/package/snippets/resource_item.html b/ckanext/canada/templates/public/package/snippets/resource_item.html
+index e506b46..5cada85 100644
+--- a/ckanext/canada/templates/public/package/snippets/resource_item.html
++++ b/ckanext/canada/templates/public/package/snippets/resource_item.html
+@@ -17,6 +17,33 @@
+   <td>
+     {% snippet 'scheming/snippets/display_field.html',
+       field=name_field, data=res, entity_type='dataset', object_type=pkg.type %}
++    {% set csv_dict = h.recombinant_csv_dict(res.id) %}
++    {% if csv_dict %}
++      <details style="display: inline; border-style: none;"><summary style="outline: none;">{{ _('Data Columns info') }}</summary>
++      <table id="csv_dict" class="table table-striped" data-role="table" data-mode="columntoggle"
++        data-wb-tables='{
++        "paging": true,
++        "data": [["asdf", "asdf", "asd"], ],
++        }'>
++        <thead>
++          <tr>
++              <th scope="col" data-priority="2">{{ _('Column name') }}</th>
++              <th>{{ _('English descirption') }}</th>
++              <th>{{ _('French description') }}</th>
++          </tr>
++        </thead>
++        <tbody>
++      {% for col_name, col_en, col_fr in csv_dict %}
++          <tr>
++              <td>{{ col_name }}</td>
++              <td>{{ col_en }}</td>
++              <td>{{ col_fr }}</td>
++          </tr>
++      {% endfor %}
++        </tbody>
++      </table>
++      </details>
++    {% endif %}
+   </td>
+   <td class="td-center">
+     {% snippet 'scheming/snippets/display_field.html',
+@@ -25,6 +52,38 @@
+   <td nowrap class="td-center">
+     {% snippet 'scheming/snippets/display_field.html',
+       field=format_field, data=res, entity_type='dataset', object_type=pkg.type %}
++    {% set csv_dict = h.recombinant_csv_dict(res.id) %}
++    {% if csv_dict %}
++    <div>
++      <a href="#mid-screen" aria-controls="mid-screen" class="overlay-lnk" role="button">Field Info</a>
++    <section id="mid-screen" class="wb-overlay modal-content overlay-def wb-popup-mid">
++	<header class="modal-header">
++		<h2 class="modal-title">Middle screen overlay</h2>
++	</header>
++        <div class="modal-body">
++      <table id="csv_dict2" class="table table-striped" style="white-space: normal;">
++        <thead>
++          <tr>
++              <th width='15%'>{{ _('Column name') }}</th>
++              <th width='30%'>{{ _('English descirption') }}</th>
++              <th width='30%'>{{ _('French description') }}</th>
++          </tr>
++        </thead>
++        <tbody>
++      {% for col_name, col_en, col_fr in csv_dict %}
++          <tr>
++              <td>{{ col_name }}</td>
++              <td>{{ col_en }} </td>
++              <td>{{ col_fr }}</td>
++          </tr>
++      {% endfor %}
++        </tbody>
++      </table>
++        </div>
++    </section> 
++    </div>
++    
++    {% endif %}
+   </td>
+   <td class="td-center">
+     {% snippet 'scheming/snippets/display_field.html',
