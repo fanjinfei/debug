@@ -1,0 +1,18 @@
+--- /etc/httpd/conf.d/vhosts.conf	2016-10-12 12:52:37.000000000 -0400
++++ /tmp/vhosts.conf	2017-02-13 11:22:11.347466760 -0500
+@@ -39,12 +39,12 @@
+   # Do not use the default locale for CKAN
+   RewriteCond %{HTTP_HOST} ^(open.canada.ca) [NC]
+   RewriteCond %{REQUEST_URI} ^/data/
+-  RewriteCond %{REQUEST_URI} !^/data/(en|static|dist|data/|api/|fanstatic/)
++  RewriteCond %{REQUEST_URI} !^/data/(en|static|base/|robots.txt|dist|data/|api/|fanstatic/)
+   RewriteRule ^/data/(.*)$ http://open.canada.ca/data/en/$1
+ 
+   RewriteCond %{HTTP_HOST} ^(ouvert.canada.ca) [NC]
+   RewriteCond %{REQUEST_URI} ^/data/
+-  RewriteCond %{REQUEST_URI} !^/data/(fr|static|dist|data/|api/|fanstatic/)
++  RewriteCond %{REQUEST_URI} !^/data/(fr|static|base/|robots.txt|dist|data/|api/|fanstatic/)
+   RewriteRule ^/data/(.*)$ http://ouvert.ca/data/fr/$1
+ 
+   RewriteCond %{HTTP_HOST} ^(open.canada.ca) [NC]
+

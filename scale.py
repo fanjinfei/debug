@@ -20,7 +20,68 @@ def _get_data():
         p = ( round( random.uniform(1, 10), 4), round(random.uniform(2,20), 4) )
         data.append(p)
     return data
+class MData():
+    def __init__(self, data):
+        self.data = data
+        (self.xin, self.yin), (self.xax, self.yax) = data[0], data[1]
+        for (x,y) in data:
+            if x < self.xin: self.xin = x
+            if y < self.yin: self.yin = y
+            if x > self.xax: self.xax = x
+            if y > self.yax: self.yax = y
+    def dist(self, i, j):
+        (x1,y1) =  self.data[i]
+        (x2,y2) = self.data[j]
+        x1 = x1-x2
+        y1 = y1 - y2
+        return math.sqrt( x1*x1 + y1*y1)
+    def getNN(self): # get the most NN
+        ci, cj,cl = None, None, None
+        data = self.data
+        for i in range(0,len(data)-1):
+            for j in range(i+1, len(data)):
+                l = self.dist(i,j)
+                if cl == None or cl > l:
+                    ci,cj,cl = i,j,l
+        if data[ci][0] > data[cj][0]: #ci in the left of cj
+            ci,cj= cj, ci
+        self.ci, self.cj, self.cl = ci, cj, cl
+    def getRecordSets(self): # [ ( 2,3), (8, 7, 10) ], [2,3] will be kept
+        self.getNN()
+        ci, cj, cl = self.ci, self.cj, self.cl
+        #cut grid, uniform in directions
+        (x1,y1), (x2,y2) = self.data[ci], self.data[cj]
+        xin,yin,xax,yax = self.xin, self.yin, self.xax, self.yax
+        d1 = max( abs( x1-x2), abs(y1-y2))
+        d1 *= 1.0001 #0.0001 delta
+        dp = 1 if y2 >= y1 else -1 #left-bottom or left-top ?, make sure at least one is reduced
 
+        #relocate p to left-botton of grid
+        data = {} #defaultdict( type ({})) defaultdict(lambda: defaultdict(int))
+        merged = defaultdict(lambda: defaultdict(list))
+        for (x,y) in self.data:
+            nx, ny = (x-x1)/d1, (y-y1)/d1
+            px,py = math.floor(nx), ( math.floor(ny) if dp==1 else math.ceil(ny))
+            if not data.get(px):
+                data[px] = {}
+            data[px][py] = (px*d1 + x1, py*d1 + y1)
+
+            merged[px][py].append( (x,y) )
+
+        ndata = []
+        for x, ly in data.iteritems():
+            for y, p in ly.iteritems():
+                ndata.append( p)
+        mdata = []
+        for x, ly in merged.iteritems():
+            for y, ps in ly.iteritems():
+                if len(ps) > 1:
+                    mdata.append(ps)
+        return ndata, mdata
+def _test2():
+    md = MData( _get_data())
+    md.getRecordSets()
+    #sys.exit(0)
 def fmt(x, y):
     return 'x: {x:0.2f}\ny: {y:0.2f}'.format(x=x, y=y)
 
@@ -183,8 +244,8 @@ class Window(QtGui.QDialog):
         '''data = []
         for (x,y) in self.data:
             data.append( (x,y) )'''
-        #md = MData(self.data)
-        #self.data, self.mdata= md.getRecordSets()
+        md = MData(self.data)
+        self.data, self.mdata= md.getRecordSets()
         self.plot()
          
     def plot(self):
