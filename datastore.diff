@@ -1,0 +1,332 @@
+diff --git a/ckan/controllers/package.py b/ckan/controllers/package.py
+index 9f32e0f..11fde58 100644
+--- a/ckan/controllers/package.py
++++ b/ckan/controllers/package.py
+@@ -143,6 +143,7 @@ class PackageController(base.BaseController):
+ 
+         # unicode format (decoded from utf8)
+         q = c.q = request.params.get('q', u'')
++        print(request.params)
+         c.query_error = False
+         page = self._get_page_number(request.params)
+ 
+diff --git a/ckan/lib/activity_streams.py b/ckan/lib/activity_streams.py
+index 387ce77..a936f0e 100644
+--- a/ckan/lib/activity_streams.py
++++ b/ckan/lib/activity_streams.py
+@@ -240,6 +240,7 @@ def activity_list_to_html(context, activity_stream, extra_vars):
+         if activity_type in activity_stream_actions_with_detail:
+             details = logic.get_action('activity_detail_list')(context=context,
+                 data_dict={'id': activity['id']})
++            print('details: ', details)
+             # If an activity has just one activity detail then render the
+             # detail instead of the activity.
+             if len(details) == 1:
+diff --git a/ckan/lib/search/query.py b/ckan/lib/search/query.py
+index c3e0c4f..1209860 100644
+--- a/ckan/lib/search/query.py
++++ b/ckan/lib/search/query.py
+@@ -353,6 +353,7 @@ class PackageSearchQuery(SearchQuery):
+ 
+         conn = make_connection()
+         log.debug('Package query: %r' % query)
++        print('solr query: ', query)
+         try:
+             solr_response = conn.raw_query(**query)
+         except SolrException, e:
+diff --git a/ckan/logic/__init__.py b/ckan/logic/__init__.py
+index 767b210..a5aad80 100644
+--- a/ckan/logic/__init__.py
++++ b/ckan/logic/__init__.py
+@@ -344,12 +344,10 @@ def get_action(action):
+     :rtype: callable
+ 
+     '''
+-
+     if _actions:
+         if action not in _actions:
+             raise KeyError("Action '%s' not found" % action)
+         return _actions.get(action)
+-
+     # Otherwise look in all the plugins to resolve all possible
+     # First get the default ones in the ckan/logic/action directory
+     # Rather than writing them out in full will use __import__
+diff --git a/ckan/logic/action/create.py b/ckan/logic/action/create.py
+index b63302f..15e3b90 100644
+--- a/ckan/logic/action/create.py
++++ b/ckan/logic/action/create.py
+@@ -1202,6 +1202,7 @@ def activity_create(context, activity_dict, **kw):
+ 
+     '''
+ 
++    print(context['session'])
+     _check_access('activity_create', context, activity_dict)
+ 
+     # this action had a ignore_auth param which has been removed
+@@ -1227,17 +1228,28 @@ def activity_create(context, activity_dict, **kw):
+     schema = context.get('schema') or \
+         ckan.logic.schema.default_create_activity_schema()
+ 
++    #activity_detail will use activity id
++    detail_dict = activity_dict.get('activity_detail', None)
++
+     data, errors = _validate(activity_dict, schema, context)
+     if errors:
+         raise ValidationError(errors)
+ 
+     activity = model_save.activity_dict_save(data, context)
+-
++    print( context['session'] )
++    if detail_dict:
++        detail_dict['activity_id'] = activity.id
++        detail = model.activity.ActivityDetail(activity.id, detail_dict['object_id'], 
++            detail_dict['object_type'], detail_dict['activity_type'],
++            detail_dict['data'])
++        context['session'].add(detail)
+     if not context.get('defer_commit'):
+         model.repo.commit()
+ 
+-    log.debug("Created '%s' activity" % activity.activity_type)
+-    return model_dictize.activity_dictize(activity, context)
++    log.info("Created '%s' activity" % activity.activity_type)
++    ret = model_dictize.activity_dictize(activity, context)
++    print (ret)
++    return ret
+ 
+ 
+ def package_relationship_create_rest(context, data_dict):
+diff --git a/ckan/logic/action/get.py b/ckan/logic/action/get.py
+index 62905e1..8c4b0aa 100644
+--- a/ckan/logic/action/get.py
++++ b/ckan/logic/action/get.py
+@@ -1864,8 +1864,10 @@ def package_search(context, data_dict):
+ 
+     fl
+         The parameter that controls which fields are returned in the solr
+-        query cannot be changed.  CKAN always returns the matched datasets as
+-        dictionary objects.
++        query cannot be changed.
++        fl can be  None or a list of result fields, such as ['id', 'extras_????'].
++        if fl = None, datasets are returned as a list of full dictionary.
++
+     '''
+     # sometimes context['schema'] is None
+     schema = (context.get('schema') or
+@@ -1908,8 +1910,13 @@ def package_search(context, data_dict):
+         else:
+             data_source = 'validated_data_dict'
+         data_dict.pop('use_default_schema', None)
++
+         # return a list of package ids
+-        data_dict['fl'] = 'id {0}'.format(data_source)
++        result_fl = data_dict.get('fl')
++        if not result_fl:
++            data_dict['fl'] = 'id {0}'.format(data_source)
++        else:
++            data_dict['fl'] = ' '.join(result_fl)
+ 
+         # If this query hasn't come from a controller that has set this flag
+         # then we should remove any mention of capacity from the fq and
+@@ -1945,21 +1952,28 @@ def package_search(context, data_dict):
+         # Add them back so extensions can use them on after_search
+         data_dict['extras'] = extras
+ 
+-        for package in query.results:
+-            # get the package object
+-            package_dict = package.get(data_source)
+-            ## use data in search index if there
+-            if package_dict:
+-                # the package_dict still needs translating when being viewed
+-                package_dict = json.loads(package_dict)
+-                if context.get('for_view'):
+-                    for item in plugins.PluginImplementations(
+-                            plugins.IPackageController):
+-                        package_dict = item.before_view(package_dict)
+-                results.append(package_dict)
+-            else:
+-                log.error('No package_dict is coming from solr for package '
+-                          'id %s', package['id'])
++        if result_fl:
++            for package in query.results:
++                if package.get('extras'):
++                    package.update(package['extras'] )
++                    package.pop('extras')
++                results.append(package)
++        else:
++            for package in query.results:
++                # get the package object
++                package_dict = package.get(data_source)
++                ## use data in search index if there
++                if package_dict:
++                    # the package_dict still needs translating when being viewed
++                    package_dict = json.loads(package_dict)
++                    if context.get('for_view'):
++                        for item in plugins.PluginImplementations(
++                                plugins.IPackageController):
++                            package_dict = item.before_view(package_dict)
++                    results.append(package_dict)
++                else:
++                    log.error('No package_dict is coming from solr for package '
++                              'id %s', package['id'])
+ 
+         count = query.count
+         facets = query.facets
+diff --git a/ckan/logic/schema.py b/ckan/logic/schema.py
+index 39db38b..b46acdb 100644
+--- a/ckan/logic/schema.py
++++ b/ckan/logic/schema.py
+@@ -597,6 +597,7 @@ def default_autocomplete_schema():
+ def default_package_search_schema():
+     schema = {
+         'q': [ignore_missing, unicode],
++        'fl': [ignore_missing, list_of_strings],
+         'fq': [ignore_missing, unicode],
+         'rows': [ignore_missing, natural_number_validator],
+         'sort': [ignore_missing, unicode],
+diff --git a/ckan/logic/validators.py b/ckan/logic/validators.py
+index 41e08e4..a0936c5 100644
+--- a/ckan/logic/validators.py
++++ b/ckan/logic/validators.py
+@@ -195,6 +195,7 @@ def resource_id_exists(value, context):
+     session = context['session']
+     if not session.query(model.Resource).get(value):
+         raise Invalid('%s: %s' % (_('Not found'), _('Resource')))
++    print('resource id checked: ', value)
+     return value
+ 
+ 
+@@ -278,16 +279,6 @@ def activity_type_exists(activity_type):
+     else:
+         raise Invalid('%s: %s' % (_('Not found'), _('Activity type')))
+ 
+-def resource_id_exists(value, context):
+-
+-    model = context['model']
+-    session = context['session']
+-
+-    result = session.query(model.Resource).get(value)
+-    if not result:
+-        raise Invalid('%s: %s' % (_('Not found'), _('Resource')))
+-    return value
+-
+ # A dictionary mapping activity_type values from activity dicts to functions
+ # for validating the object_id values from those same activity dicts.
+ object_id_validators = {
+diff --git a/ckan/tests/logic/action/test_get.py b/ckan/tests/logic/action/test_get.py
+index 05bad54..b5fff79 100644
+--- a/ckan/tests/logic/action/test_get.py
++++ b/ckan/tests/logic/action/test_get.py
+@@ -881,6 +881,17 @@ class TestPackageSearch(helpers.FunctionalTestBase):
+         eq(search_result['results'][0]['title'], 'Rivers')
+         eq(search_result['count'], 1)
+ 
++    def test_search_fl(self):
++        factories.Dataset(title='Rivers', name='test_ri')
++        factories.Dataset(title='Lakes')
++
++        search_result = helpers.call_action('package_search', q='rivers', fl=['title', 'name'])
++
++        eq(search_result['results'][0]['title'], 'Rivers')
++        eq(search_result['results'][0]['name'], 'test_ri')
++        eq(len(search_result['results'][0]), 2)
++        eq(search_result['count'], 1)
++
+     def test_search_all(self):
+         factories.Dataset(title='Rivers')
+         factories.Dataset(title='Lakes')
+diff --git a/ckanext/datastore/logic/action.py b/ckanext/datastore/logic/action.py
+index 2baa02f..ca69cdc 100644
+--- a/ckanext/datastore/logic/action.py
++++ b/ckanext/datastore/logic/action.py
+@@ -156,6 +156,79 @@ def datastore_create(context, data_dict):
+     result.pop('connection_url')
+     return result
+ 
++def datastore_diff(context, data_dict):
++    ''' get records that will be inserted or updated into db table
++    '''
++    schema = context.get('schema', dsschema.datastore_upsert_schema())
++    records = data_dict.pop('records', None)
++    data_dict, errors = _validate(data_dict, schema, context)
++    if records:
++        data_dict['records'] = records
++    if errors:
++        raise p.toolkit.ValidationError(errors)
++
++    p.toolkit.check_access('datastore_upsert', context, data_dict)
++
++    if not data_dict.pop('force', False):
++        resource_id = data_dict['resource_id']
++        _check_read_only(context, resource_id)
++
++    data_dict['connection_url'] = pylons.config['ckan.datastore.write_url']
++
++    res_id = data_dict['resource_id']
++    method = data_dict.get('method', None)
++    if method != 'upsert':
++        return None
++    resources_sql = sqlalchemy.text(u'''SELECT 1 FROM "_table_metadata"
++                                        WHERE name = :id AND alias_of IS NULL''')
++    results = db._get_engine(data_dict).execute(resources_sql, id=res_id)
++    res_exists = results.rowcount > 0
++
++    if not res_exists:
++        raise p.toolkit.ObjectNotFound(p.toolkit._(
++            u'Resource "{0}" was not found.'.format(res_id)
++        ))
++
++    connection = db._get_engine(data_dict).connect()
++    resources_sql = sqlalchemy.text(u'''CREATE TEMP TABLE temp_res (
++         like "{0}" INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES ) ON COMMIT DROP;'''.format(res_id))
++    results = connection.execute(resources_sql)
++
++    data_dict['resource_id'] = 'temp_res'
++    data_dict['method'] = 'insert'
++    context['connection'] = connection
++    result = db.upsert_data(context, data_dict)
++    context.pop('connection')
++
++    fields = []
++    for k,v in data_dict['records'][0].iteritems():
++        fields.append(k)
++    fields_string = ','.join(fields)
++
++    resources_sql = sqlalchemy.text(u'''SELECT {1} from temp_res EXCEPT
++            select {1} from "{0}";'''.format(res_id, fields_string))
++    raw_results = connection.execute(resources_sql)
++
++    result_ds = {}
++    result = db.format_results(context, raw_results, result_ds)
++    connection.execute("DROP TABLE if EXISTS temp_res;")
++    connection.close()
++
++    result.pop('id', None)
++    result.pop('connection_url', None)
++    result.pop('fields', None)
++    data_dict['resource_id'] = result['resource_id'] = res_id
++    data_dict['method'] = result['method'] = method
++
++    if len(result['records']) > 0:
++        field_dict = []
++        for k,v in result['records'][0].iteritems():
++            if k not in fields:
++                field_dict.append(k)
++        for record in result['records']:
++            for k in field_dict:
++                record.pop(k, None)
++    return result
+ 
+ def datastore_upsert(context, data_dict):
+     '''Updates or inserts into a table in the DataStore
+diff --git a/ckanext/datastore/plugin.py b/ckanext/datastore/plugin.py
+index 2175b28..da4c8b5 100644
+--- a/ckanext/datastore/plugin.py
++++ b/ckanext/datastore/plugin.py
+@@ -244,6 +244,7 @@ class DatastorePlugin(p.SingletonPlugin):
+ 
+     def get_actions(self):
+         actions = {'datastore_create': action.datastore_create,
++                   'datastore_diff': action.datastore_diff,
+                    'datastore_upsert': action.datastore_upsert,
+                    'datastore_delete': action.datastore_delete,
+                    'datastore_search': action.datastore_search,

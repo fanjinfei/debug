@@ -1,0 +1,1204 @@
+diff --git a/bin/transitional_orgs_filter.py b/bin/transitional_orgs_filter.py
+index d583441..af2af19 100755
+--- a/bin/transitional_orgs_filter.py
++++ b/bin/transitional_orgs_filter.py
+@@ -18,20 +18,20 @@ EXTRAS = set([
+     'shortform_fr',
+     'ati_email',
+     'opengov_email',
++    'title_translated',
++    'id',
++    'title',
++    'name',
+     ])
+ 
+ users = '--users' in sys.argv
+ 
+ for l in sys.stdin:
+     o = json.loads(l)
+-    old_extras = dict((e['key'], e['value']) for e in o['extras'])
+-    line = {
+-        "title": o["title"],
+-        "id": o["id"],
+-        "extras": [{"value": old_extras.get(ename, ''), "key": ename}
+-            for ename in EXTRAS],
+-        "name": o["name"],
+-        }
++    line = {}
++    for key in o:
++        if key in EXTRAS:
++           line[key] = o.get(key, '')
+     if users:
+         line["users"] = [
+             {"name": u["name"], "capacity": u["capacity"]}
+diff --git a/ckanext/canada/ati.py b/ckanext/canada/ati.py
+index 173f116..f77d81e 100644
+--- a/ckanext/canada/ati.py
++++ b/ckanext/canada/ati.py
+@@ -148,17 +148,10 @@ def _update_records(records, org_detail, conn):
+         unique = hashlib.md5(orghash
+             + r.get('request_number', repr((year, month))
+             ).encode('utf-8')).hexdigest()
+-        shortform = None
+-        shortform_fr = None
+-        ati_email = None
++        shortform = org_detail['shortform']
++        shortform_fr = org_detail['shortform_fr']
++        ati_email = org_detail['ati_email']
+         month = max(1, min(12, month))
+-        for e in org_detail['extras']:
+-            if e['key'] == 'shortform':
+-                shortform = e['value']
+-            elif e['key'] == 'shortform_fr':
+-                shortform_fr = e['value']
+-            elif e['key'] == 'ati_email':
+-                ati_email = e['value']
+ 
+         # don't ask why, just doing it the way it was done before
+         en_record = {
+@@ -175,7 +168,7 @@ def _update_records(records, org_detail, conn):
+             'ss_ati_month_en': '{0:02d}'.format(month),
+             'ss_ati_monthname_en': calendar.month_name[month],
+             'ss_ati_number_of_pages_en': r.get('pages', ''),
+-            'ss_ati_organization_en': org_detail['title'].split(' | ', 1)[0],
++            'ss_ati_organization_en': org_detail['title_translated']['en'],
+             'ss_ati_year_en': year,
+             'ss_ati_org_shortform_en': shortform,
+             'ss_ati_org_name_code': org,
+@@ -198,7 +191,7 @@ def _update_records(records, org_detail, conn):
+             'ss_ati_month_fr': '{0:02d}'.format(month),
+             'ss_ati_monthname_fr': MONTHS_FR[month],
+             'ss_ati_number_of_pages_fr': r.get('pages', ''),
+-            'ss_ati_organization_fr': org_detail['title'].split(' | ', 1)[-1],
++            'ss_ati_organization_fr': org_detail['title_translated']['fr'],
+             'ss_ati_year_fr': year,
+             'ss_ati_org_shortform_fr': shortform_fr,
+             'ss_ati_org_name_code': org,
+diff --git a/ckanext/canada/controller.py b/ckanext/canada/controller.py
+index 286a61f..1e1c03e 100644
+--- a/ckanext/canada/controller.py
++++ b/ckanext/canada/controller.py
+@@ -24,6 +24,11 @@ from ckan.controllers.feed import (
+     _create_atom_id,
+     _FixedAtom1Feed
+ )
++from ckan.model.group import Group
++from ckan.model.group_extra import GroupExtra, group_extra_table
++from ckan.model import meta
++from sqlalchemy import or_, and_
++
+ from ckan.lib import i18n
+ import ckan.lib.jsonp as jsonp
+ from ckan.controllers.package import PackageController
+@@ -53,6 +58,34 @@ from ckanext.recombinant.datatypes import canonicalize
+ int_validator = get_validator('int_validator')
+ 
+ 
++def _search_by_name_or_title(cls, data_dict, group_type=None, is_org=False):
++    text_query = data_dict.get('q')
++    text_query = text_query.strip().lower()
++    q = meta.Session.query(Group.id, Group.name).filter(cls.state == 'active') \
++            .filter(cls._extras.any( and_( GroupExtra.value.ilike('%'+text_query+'%'), GroupExtra.key == ('title_translated')) ))
++    if is_org:
++        q = q.filter(cls.type == 'organization')
++    else:
++        q = q.filter(cls.type != 'organization')
++        if group_type:
++            q = q.filter(cls.type == group_type)
++
++    organization_list = []
++    limit = data_dict.get('limit', 20)
++    for organization in q.limit(limit).all():
++        result_dict = {}
++        context = {'model': model}
++        data_dict = {'id': organization.id,
++                     "include_extra": True,
++                     'all_fields': True}
++        group_dict = get_action('organization_show')(context, data_dict)
++        for k in ['id', 'name', 'title_translated', 'title']:
++            result_dict[k] = group_dict.get(k)
++        organization_list.append(result_dict)
++
++    return organization_list
++
++
+ class CanadaController(BaseController):
+     def home(self):
+         if not c.user:
+@@ -133,7 +166,7 @@ class CanadaController(BaseController):
+                    'user': c.user or c.author, 'for_view': True,
+                    'with_private': False}
+ 
+-        data_dict = {'all_fields': True}
++        data_dict = {'all_fields': True, 'include_extras': True}
+ 
+         try:
+             check_access('site_read', context)
+@@ -149,7 +182,7 @@ class CanadaController(BaseController):
+         results = get_action('organization_list')(context, data_dict)
+ 
+         def org_key(org):
+-            title = org['title'].split(' | ')[-1 if c.language == 'fr' else 0]
++            title = org['title_translated'][c.language]
+             return normalize_strip_accents(title)
+ 
+         results.sort(key=org_key)
+@@ -239,24 +272,28 @@ class CanadaController(BaseController):
+     @jsonp.jsonpify
+     def organization_autocomplete(self):
+         q = request.params.get('q', '')
++        if len(q) < 3:
++            return []
+         limit = request.params.get('limit', 20)
+         organization_list = []
+ 
+         if q:
+             context = {'user': c.user, 'model': model}
+             data_dict = {'q': q, 'limit': limit}
+-            organization_list = get_action(
+-                'organization_autocomplete'
+-            )(context, data_dict)
++            organization_list = _search_by_name_or_title(Group, data_dict, is_org=True)
+ 
+         def _org_key(org):
+-            return org['title'].split(' | ')[-1 if c.language == 'fr' else 0]
++            if org.get('title_translated'):
++                return org['title_translated'][c.language]
++            else:
++                return org['title']
+ 
+-        return [{
++        results = [{
+             'id': o['id'],
+             'name': _org_key(o),
+             'title': _org_key(o)
+-        } for o in organization_list]
++             } for o in organization_list]
++        return sorted(results, key=lambda x: x['title'])
+ 
+     def fgpv_vpgf(self, pkg_id):
+         return render('fgpv_vpgf/index.html', extra_vars={
+diff --git a/ckanext/canada/helpers.py b/ckanext/canada/helpers.py
+index cd2750d..6f164a3 100644
+--- a/ckanext/canada/helpers.py
++++ b/ckanext/canada/helpers.py
+@@ -11,6 +11,16 @@ import ckanapi
+ import ckan.lib.helpers as h
+ from ckanext.scheming.helpers import scheming_get_preset
+ from ckan.logic.validators import boolean_validator
++from ckan.logic import get_action
++from ckan.logic.schema import default_show_group_schema
++from ckan.lib.base import model
++
++from sqlalchemy.sql import select
++
++import ckan.plugins as p
++import ckan.lib.plugins as lib_plugins
++import ckan.lib.dictization.model_dictize as dictize
++from ckan.lib.navl.dictization_functions import Missing
+ 
+ ORG_MAY_PUBLISH_OPTION = 'canada.publish_datasets_organization_name'
+ ORG_MAY_PUBLISH_DEFAULT_NAME = 'tb-ct'
+@@ -20,6 +30,72 @@ DATAPREVIEW_MAX = 500
+ FGP_URL_OPTION = 'fgp.ramp_base_url'
+ FGP_URL_DEFAULT = 'http://localhost/'
+ 
++def group_or_org_plugin_dictize(context, group_dict, include_followers, is_org):
++    plugins = p
++    if is_org:
++        plugin_type = plugins.IOrganizationController
++    else:
++        plugin_type = plugins.IGroupController
++
++    for item in plugins.PluginImplementations(plugin_type):
++        item.read(group)
++
++    group_plugin = lib_plugins.lookup_group_plugin(group_dict['type'])
++    try:
++        schema = group_plugin.db_to_form_schema_options({
++            'type': 'show',
++            'api': 'api_version' in context,
++            'context': context})
++    except AttributeError:
++        schema = group_plugin.db_to_form_schema()
++
++    if include_followers:
++        model = context['model']
++        group_dict['num_followers'] = get_action('group_follower_count')(
++            {'model': model, 'session': model.Session},
++            {'id': group_dict['id']})
++    else:
++        group_dict['num_followers'] = 0
++    if not group_dict.get('display_name'):
++        group_dict['display_name'] = None
++    if not group_dict.get('package_count'):
++        group_dict['package_count'] = None
++
++    schema = default_show_group_schema()
++    group_dict, errors = lib_plugins.plugin_validate(
++        group_plugin, context, group_dict, schema,
++        'organization_show' if is_org else 'group_show')
++    return group_dict
++
++
++def _query_organization_extras(context, data_dict):
++    model = context['model']
++    group = model.group_table
++    is_latest_revision = not(context.get('revision_id') or
++                         context.get('revision_date'))
++    execute = dictize._execute if is_latest_revision else dictize._execute_with_revision
++
++    # customize: owner org extras
++    extra = model.group_extra_table
++    q = select([extra]).where(extra.c.group_id == data_dict["id"])
++    result = execute(q, group, context)
++    org_extras = dictize.extras_list_dictize(result, context)
++    data_dict["extras"] = org_extras
++    data_dict = group_or_org_plugin_dictize(context, data_dict, False, True)
++    return data_dict
++
++# overwrite
++def organizations_available(permission='edit_group'):
++    '''Return a list of organizations that the current user has the specified
++    permission for.
++    '''
++    context = {'user': c.user}
++    data_dict = {'permission': permission}
++    results = get_action('organization_list_for_user')(context, data_dict)
++    organization_results = []
++    for org in results:
++        organization_results.append(_query_organization_extras(context, org))
++    return organization_results
+ 
+ def may_publish_datasets(userobj=None):
+     if not userobj:
+@@ -53,10 +129,26 @@ def openness_score(pkg):
+                 score = max(5, score)
+     return score
+ 
++def get_organization_extra(organization):
++    context = {'model': model}
++    org = model.Group.get(organization["name"])
++    organization["id"] = org.id
++    organization["type"] = org.type
++    organization = _query_organization_extras(context, organization)
++    return organization
+ 
+ def user_organizations(user):
+     u = User.get(user['name'])
+-    return u.get_groups(group_type = "organization")
++    groups = u.get_groups(group_type="organization")
++    groups_data = []
++    for group in groups:
++        context = {'model': model}
++        data_dict = {'id': group.id,
++                    "include_extra": True,
++                    'all_fields': True}
++        group_dict = get_action('organization_show')(context, data_dict)
++        groups_data.append(group_dict)
++    return groups_data
+ 
+ def today():
+     return datetime.datetime.now(EST()).strftime("%Y-%m-%d")
+@@ -257,3 +349,4 @@ def linked_user(user, maxlength=0, avatar=20):
+         )
+ # FIXME: because ckan/lib/activity_streams is terrible
+ h.linked_user = linked_user
++h.organizations_available = organizations_available
+diff --git a/ckanext/canada/i18n/fr/LC_MESSAGES/canada.po b/ckanext/canada/i18n/fr/LC_MESSAGES/canada.po
+index 4426bf8..e10d295 100644
+--- a/ckanext/canada/i18n/fr/LC_MESSAGES/canada.po
++++ b/ckanext/canada/i18n/fr/LC_MESSAGES/canada.po
+@@ -90,6 +90,54 @@ msgstr "Confirmer la suppression"
+ msgid "Create Dataset"
+ msgstr "Créer un jeu de données"
+ 
++msgid "Create new record"
++msgstr "Créer un nouveau dossier"
++
++msgid "Travel - Public Servants"
++msgstr "Voyages des fonctionnaires"
++
++msgid "Travel - Non-Public Servants"
++msgstr "Voyages des non-fonctionnaires"
++
++msgid "Hospitality"
++msgstr "Accueil"
++
++msgid "Conference Fees"
++msgstr "Frais de participation aux conférence"
++
++msgid "International Travel by Minister and Minister's Staff (also included in Non-Public Servant Travel)"
++msgstr "Voyages internationaux du ministre et du personnel du ministre (aussi inclus dans les voyages des non-fonctionnaires)"
++
++msgid "Travel Public Servants - Explanation of Significant Variance (English)"
++msgstr "Voyages des fonctionnaires - Explication d’un écart important (anglais)"
++
++msgid "Travel Public Servants - Explanation of Significant Variance (French)"
++msgstr "Voyages des fonctionnaires - Explication d’un écart important (français)"
++
++msgid "Travel Non-Public Servants - Explanation of Significant Variance (English)"
++msgstr "Voyages des non-fonctionnaires - Explication d’un écart important (anglais)"
++
++msgid "Travel Non-Public Servants - Explanation of Significant Variance (French)"
++msgstr "Voyages des non-fonctionnaires - Explication d’un écart important (français)"
++
++msgid "Hospitality - Explanation of Significant Variance (English)"
++msgstr "Accueil - Explication d’un écart important (anglais)"
++
++msgid "Hospitality - Explanation of Significant Variance (French)"
++msgstr "Accueil - Explication d’un écart important (français)"
++
++msgid "Conference Fees - Explanation of Significant Variance (English)"
++msgstr "Frais de participation aux conférence - Explication d’un écart important (anglais)"
++
++msgid "Conference Fees - Explanation of Significant Variance (French)"
++msgstr "Frais de participation aux conférence - Explication d’un écart important (français)"
++
++msgid "International Travel by Minister and Minister’s Staff - Explanation of Significant Variance (English)"
++msgstr "Voyages internationaux du ministre et du personnel du ministre - Explication d’un écart important (anglais)"
++
++msgid "International Travel by Minister and Minister’s Staff - Explanation of Significant Variance (French)"
++msgstr "Voyages internationaux du ministre et du personnel du ministre - Explication d’un écart important (français)"
++
+ msgid "What are datasets?"
+ msgstr "Qu’est-ce qu’un ensemble de données?"
+ 
+@@ -471,6 +519,9 @@ msgstr "Type de données"
+ msgid "No datasets were found to match your query."
+ msgstr "Aucun jeu de données ne correspond aux termes de recherche spécifiés."
+ 
++msgid "No datasets found for \"{query}\""
++msgstr "Aucun dossier trouvé pour \"{query}\""
++
+ msgid "Please review your spelling, or reduce the number of filters selected."
+ msgstr "S'il vous plaît vérifier l’orthographe, ou réduire le nombre de filtres sélectionnés."
+ 
+@@ -708,8 +759,8 @@ msgstr "Ministère"
+ msgid "Account Created"
+ msgstr "Compte créé"
+ 
+-msgid "ATI Summaries and ATI Nothing to Report templates have now been combined. Now, you will only need to download and submit one template (see the 2 tabs in the template). Please email open-ouvert@tbs-sct.gc.ca with any questions."
+-msgstr "Les documents modèles « L’accès à l’information sommaires complétés » et « L’accès à l’information rien à signaler » ont été combinées. À partir de maintenant, vous n’aurez besoin de télécharger et d'envoyer qu’un seul document modèle (voir les 2 languettes dans le modèle). Si vous avez des questions, veuillez envoyer un courriel à open-ouvert@tbs-sct.gc.ca."
++msgid "ATI Summaries and ATI Nothing to Report templates have now been combined. Now, you will only need to download and submit one template (see the 2 tabs in the template). Please email <a href=\"mailto:open-ouvert@tbs-sct.gc.ca\">open-ouvert@tbs-sct.gc.ca</a> with any questions."
++msgstr "Les documents modèles « L’accès à l’information sommaires complétés » et « L’accès à l’information rien à signaler » ont été combinées. À partir de maintenant, vous n’aurez besoin de télécharger et d'envoyer qu’un seul document modèle (voir les 2 languettes dans le modèle). Si vous avez des questions, veuillez envoyer un courriel à <a href=\"mailto:open-ouvert@tbs-sct.gc.ca\">open-ouvert@tbs-sct.gc.ca</a>."
+ 
+ msgid "Please note – if you have downloaded a template before DECEMBER 19, 2016, please download the updated version before submitting your information."
+ msgstr "Veuillez noter que les modèles Excel ont été mis-à-jour le 19 décembre 2016. Si le modèle que vous utilisez a été téléchargé avant cette date, veuillez télécharger la nouvelle version avant de soumettre vos informations."
+@@ -892,9 +943,6 @@ msgstr "Nombre d'opérations réalisées au moyen de la carte d'acquisition pour
+ msgid "Acquisition Card Transactions for all dollar values – Total Value ($ 000)"
+ msgstr "Carte d'acquisition pour toutes les valeurs en dollars– Valeur totale (000 $)"
+ 
+-msgid "Proactive Disclosure - Contracts"
+-msgstr "Divulgation proactive - Contrats"
+-
+ msgid "Proactive Disclosure - Contracts Nothing to Report"
+ msgstr "Divulgation proactive – Contrats (Rien à signaler)"
+ 
+@@ -1475,6 +1523,12 @@ msgstr "{actor} a créé le dosier {dataset}"
+ msgid "{actor} updated the dataset {dataset}"
+ msgstr "{actor} a mis à jour le dossier {dataset}"
+ 
++msgid "{actor} updated the record {datastore} {datastore_detail}"
++msgstr "{actor} a mis à jour le dossier {datastore} {datastore_detail}"
++
++msgid "{actor} deleted the record {datastore} {datastore_detail}"
++msgstr "{actor} a supprimé le jeu de données {datastore} {datastore_detail}"
++
+ # Footer links
+ 
+ msgid "Open Government Contact"
+@@ -1655,10 +1709,10 @@ msgid "Use the Download URL field above to link to the related record."
+ msgstr "Utilisez le champ URL de téléchargement ci-dessus pour créer un lien vers le dossier connexe."
+ 
+ msgid "Open Data Metadata Element Set"
+-msgstr "Ensemble d’éléments de métadonnées ouvert d’information"
++msgstr "Ensemble d’éléments de métadonnées de données ouvertes"
+ 
+ msgid "Open Information Metadata Element Set"
+-msgstr "Ensemble d’éléments de métadonnées ouvert d’information"
++msgstr "Ensemble d’éléments de métadonnées d’information ouverte"
+ 
+ 
+ #: ckan/controllers/user.py:383
+@@ -1758,7 +1812,7 @@ msgid "Record for %d added."
+ msgstr "Record pour %d ajoutée."
+ 
+ msgid "Previous Year"
+-msgstr "année précédente"
++msgstr "Année précédente"
+ 
+ msgid "Record Status"
+ msgstr "État du dossier"
+@@ -1769,6 +1823,27 @@ msgstr "En attente"
+ msgid "Published"
+ msgstr "Publié"
+ 
++msgid "FGP Metadata"
++msgstr "Métadonnées de la PGF"
++
++msgid "Data Contact"
++msgstr "Personne-ressource responsable des données"
++
++msgid "Distributor Contact"
++msgstr "Personne-ressource responsable de la distribution"
++
++msgid "Organization Name"
++msgstr "Nom de l'organisation"
++
++msgid "Telephone Number"
++msgstr "Numéro de téléphone"
++
++msgid "Address"
++msgstr "Adresse"
++
++msgid "entries"
++msgstr "entrées"
++
+ msgid "login welcome text"
+ msgstr ""
+ "<h2>Bienvenue au registre du gouvernement ouvert</h2>"
+diff --git a/ckanext/canada/pd.py b/ckanext/canada/pd.py
+index d63c0d8..5ec632e 100644
+--- a/ckanext/canada/pd.py
++++ b/ckanext/canada/pd.py
+@@ -131,9 +131,9 @@ def rebuild(command_name, csv_files=None):
+     :return: Nothing
+     :rtype: None
+     """
+-    clear_index(command_name)
++    #clear_index(command_name)
+ 
+-    conn = solr_connection(command_name)
++    #conn = solr_connection(command_name)
+     lc = LocalCKAN()
+     if csv_files:
+         for csv_file in csv_files:
+@@ -158,6 +158,7 @@ def rebuild(command_name, csv_files=None):
+                 except NotFound:
+                     continue
+                 print "    {0:s} {1}".format(org_id, len(records))
++                continue
+                 unmatched = _update_records(
+                     records, org_detail, conn, resource_name, unmatched)
+     else:
+@@ -220,20 +221,15 @@ def _update_records(records, org_detail, conn, resource_name, unmatched):
+     for r in records:
+         unique, friendly = unique_id(r)
+ 
+-        shortform = None
+-        shortform_fr = None
+-        for e in org_detail['extras']:
+-            if e['key'] == 'shortform':
+-                shortform = e['value']
+-            elif e['key'] == 'shortform_fr':
+-                shortform_fr = e['value']
++        shortform = org_detail['shortform']
++        shortform_fr = org_detail['shortform_fr']
+ 
+         solrrec = {
+             'id': unique,
+             'unique_id': friendly,
+             'org_name_code': org_detail['name'],
+-            'org_name_en': org_detail['title'].split(' | ', 1)[0],
+-            'org_name_fr': org_detail['title'].split(' | ', 1)[-1],
++            'org_name_en': org_detail['title_tranlated']['en'],
++            'org_name_fr': org_detail['title_tranlsated']['fr'],
+             }
+ 
+         for f in chromo['fields']:
+diff --git a/ckanext/canada/plugins.py b/ckanext/canada/plugins.py
+index 183b4e3..e4c60db 100644
+--- a/ckanext/canada/plugins.py
++++ b/ckanext/canada/plugins.py
+@@ -5,19 +5,24 @@ import os.path
+ from pylons.i18n import _
+ import ckan.plugins as p
+ from ckan.lib.plugins import DefaultDatasetForm
++from ckan.logic import validators as logic_validators
+ from wcms import wcms_configure
+ from routes.mapper import SubMapper
+ from paste.reloader import watch_file
+ 
+ from ckantoolkit import h
++import ckanapi
++from ckan.lib.base import c
+ 
+ from ckanext.canada.metadata_schema import schema_description
+ from ckanext.canada import validators
+ from ckanext.canada import logic
+ from ckanext.canada import helpers
++from ckanext.canada import activity as act
+ 
+-import json
++from ckanext.extendedactivity.plugins import IActivity
+ 
++import json
+ 
+ class DataGCCAInternal(p.SingletonPlugin):
+     """
+@@ -237,6 +242,7 @@ ckanext.canada:schemas/info.yaml
+             'contact_information',
+             'show_subject_facet',
+             'show_fgp_facets',
++            'get_organization_extra',
+             'gravatar',
+             'linked_gravatar',
+             'linked_user',
+@@ -433,7 +439,74 @@ class DataGCCAPackageController(p.SingletonPlugin):
+         return data_dict
+ 
+     def after_show(self, context, data_dict):
+-        return data_dict
++        data_dict["organization"] = helpers._query_organization_extras(
++            context, data_dict["organization"])
+ 
+     def update_facet_titles(self, facet_titles):
+         return facet_titles
++
++class CanadaActivity(p.SingletonPlugin):
++    p.implements(p.IActions)
++    p.implements(IActivity)
++
++    def get_actions(self):
++        #override datastore_upsert and datastore_delete
++        for plugin in p.PluginImplementations(p.IActions):
++            if plugin == self:
++                continue
++            actions = plugin.get_actions()
++            if 'datastore_upsert' in actions and (
++                    'datastore_delete' in actions):
++                old_upsert = actions['datastore_upsert']
++                def new_datastore_upsert(context, data_dict):
++                    lc = ckanapi.LocalCKAN(username=c.user)
++                    diff_data = lc.action.datastore_diff(
++                        method=data_dict['method'],
++                        resource_id=data_dict['resource_id'],
++                        records=data_dict['records'],
++                        )
++                    records = diff_data['records']
++                    result = old_upsert(context, diff_data)
++                    diff_data['records'] = records
++                    act.datastore_activity_create(context, diff_data)
++                    return result
++                actions.update( {'datastore_upsert': new_datastore_upsert} )
++
++                old_delete = actions['datastore_delete']
++                def new_datastore_delete(context, data_dict):
++                    lc = ckanapi.LocalCKAN(username=c.user)
++                    deleted_data = lc.action.datastore_search(
++                        resource_id=data_dict['resource_id'],
++                        filters=data_dict['filters'],
++                        limit =10,
++                        )
++                    result = old_delete(context, data_dict)
++                    act.datastore_activity_create(context, deleted_data)
++                    return result
++                actions.update( {'datastore_delete': new_datastore_delete} )
++
++                def new_get_actions():
++                    return actions
++                setattr(plugin, 'get_actions', new_get_actions)
++                break
++
++        return {}
++
++
++    def string_icons(self, string_icons):
++        string_icons.update({'deleted datastore': 'file',
++            'changed datastore': 'file' })
++
++    def snippet_functions(self, snippet_functions):
++        snippet_functions.update({'datastore': act.get_snippet_datastore,})
++        snippet_functions.update({'datastore_detail': act.get_snippet_datastore_detail,})
++
++    def string_functions(self, string_functions):
++        string_functions.update({'changed datastore': act.activity_stream_string_changed_datastore,})
++        string_functions.update({'deleted datastore': act.activity_stream_string_deleted_datastore,})
++
++    def actions_obj_id_validator(self, obj_id_validators):
++        obj_id_validators.update({
++            'changed datastore': logic_validators.package_id_exists,
++            'deleted datastore': logic_validators.package_id_exists,
++                })
+diff --git a/ckanext/canada/schemas/info.yaml b/ckanext/canada/schemas/info.yaml
+index a42e32f..33a30f8 100644
+--- a/ckanext/canada/schemas/info.yaml
++++ b/ckanext/canada/schemas/info.yaml
+@@ -422,7 +422,7 @@ dataset_fields:
+     fr:
+       en: Homepage URL (French)
+       fr: URL de la page d’accueil (français)
+-  help_text:
++  fluent_help_text:
+     en:
+       en: A program or homepage that can be navigated to gain additional or contextual information about the asset, in English
+       fr: Programme ou page d’accueil pouvant être consulté pour obtenir de l’information supplémentaire ou contextuelle au sujet du produit, en anglais.
+diff --git a/ckanext/canada/schemas/presets.yaml b/ckanext/canada/schemas/presets.yaml
+index abcf885..0faa51a 100644
+--- a/ckanext/canada/schemas/presets.yaml
++++ b/ckanext/canada/schemas/presets.yaml
+@@ -3749,3 +3749,38 @@ presets:
+     display_snippet: multiple_choice.html
+     validators: scheming_multiple_choice
+     output_validators: scheming_multiple_choice_output
++
++# Field = Title English.
++# {The English name of the organization}
++# Field = Title (French).
++# {The French name of the organization}
++- preset_name: canada_org_title
++  values:
++    field_name: title_translated
++    label:
++      en: Title
++      fr: Titre
++    fluent_form_label:
++      en:
++        en: "Title (English)"
++        fr: "Titre (anglais)"
++      fr:
++        en: "Title (French)"
++        fr: "Titre (français)"
++    fluent_help_text:
++      en:
++        en: The English name of the organization
++        fr: The English name of the organization
++      fr:
++        en: The French name of the organization
++        fr: The French name of the organization
++    form_placeholder:
++      en: Administrative Tribunals Support Service of Canada
++      fr: Service canadien d'appui aux tribunaux administratifs
++    required: true
++    # copied from fluent_text preset
++    form_snippet: fluent_text.html
++    display_snippet: fluent_text.html
++    error_snippet: fluent_text.html
++    validators: fluent_text
++    output_validators: fluent_core_translated_output
+diff --git a/ckanext/canada/tables/ati.yaml b/ckanext/canada/tables/ati.yaml
+index 27d7d8b..440ad18 100644
+--- a/ckanext/canada/tables/ati.yaml
++++ b/ckanext/canada/tables/ati.yaml
+@@ -7,7 +7,7 @@ notes: Access, upload and modify the monthly ATI Summaries and ATI Nothing to Re
+ portal_type: info
+ collection: ati
+ 
+-upload_info: ATI Summaries and ATI Nothing to Report templates have now been combined. Now, you will only need to download and submit one template (see the 2 tabs in the template). Please email open-ouvert@tbs-sct.gc.ca with any questions.
++upload_info: ATI Summaries and ATI Nothing to Report templates have now been combined. Now, you will only need to download and submit one template (see the 2 tabs in the template). Please email <a href="mailto:open-ouvert@tbs-sct.gc.ca">open-ouvert@tbs-sct.gc.ca</a> with any questions.
+ 
+ resources:
+ - title: ATI Summaries
+diff --git a/ckanext/canada/tables/contracts.yaml b/ckanext/canada/tables/contracts.yaml
+index afcec9b..03cb89a 100644
+--- a/ckanext/canada/tables/contracts.yaml
++++ b/ckanext/canada/tables/contracts.yaml
+@@ -8,8 +8,9 @@ portal_type: info
+ collection: pd
+ 
+ resources:
+-- title: Proactive Disclosure - Contracts
++- title: Proactive Disclosure - Contracts over 10K (Quarterly)
+   resource_name: contracts
++  resource_id: fac950c0-00d5-4ec1-a4d3-9cbebf98a305
+   fields:
+ 
+   - datastore_id: reference_number
+diff --git a/ckanext/canada/tables/grants.yaml b/ckanext/canada/tables/grants.yaml
+index 78f250c..86e3ced 100644
+--- a/ckanext/canada/tables/grants.yaml
++++ b/ckanext/canada/tables/grants.yaml
+@@ -9,6 +9,7 @@ collection: pd
+ resources:
+ - title: Proactive Disclosure - Grants and Contributions
+   resource_name: grants
++  resource_id: 1d15a62f-5656-49ad-8c88-f40ce689d831
+   fields:
+ 
+   - datastore_id: ref_number
+diff --git a/ckanext/canada/tables/hospitalityq.yaml b/ckanext/canada/tables/hospitalityq.yaml
+index 1f00737..334e501 100644
+--- a/ckanext/canada/tables/hospitalityq.yaml
++++ b/ckanext/canada/tables/hospitalityq.yaml
+@@ -12,6 +12,7 @@ upload_info: Please note – if you have downloaded a template before DECEMBER 1
+ resources:
+ - title: Proactive Disclosure - Hospitality Expenses
+   resource_name: hospitalityq
++  resource_id: 7b301f1a-2a7a-48bd-9ea9-e0ac4a5313ed
+   fields:
+ 
+   - datastore_id: ref_number
+diff --git a/ckanext/canada/tables/inventory.yaml b/ckanext/canada/tables/inventory.yaml
+index c0ed4e7..c35bf7a 100644
+--- a/ckanext/canada/tables/inventory.yaml
++++ b/ckanext/canada/tables/inventory.yaml
+@@ -12,6 +12,7 @@ upload_warn: 'IMPORTANT: New or updated inventories / rows will be published on
+ resources:
+ - title: Open Data Inventory
+   resource_name: inventory
++  resource_id: d0df95a8-31a9-46c9-853b-6952819ec7b4
+   fields:
+ 
+   - datastore_id: ref_number
+diff --git a/ckanext/canada/tables/travela.yaml b/ckanext/canada/tables/travela.yaml
+index 51c56ae..a249763 100644
+--- a/ckanext/canada/tables/travela.yaml
++++ b/ckanext/canada/tables/travela.yaml
+@@ -10,6 +10,7 @@ collection: pd
+ resources:
+ - title: Proactive Disclosure - Annual Travel, Hospitality and Conferences
+   resource_name: travela
++  resource_id: 18a9969b-87d4-4ce6-af64-7c717edfd5d1
+   fields:
+ 
+   - datastore_id: year
+diff --git a/ckanext/canada/tables/travelq.yaml b/ckanext/canada/tables/travelq.yaml
+index f3a8bc9..8d5613e 100644
+--- a/ckanext/canada/tables/travelq.yaml
++++ b/ckanext/canada/tables/travelq.yaml
+@@ -12,6 +12,7 @@ upload_info: Please note – if you have downloaded a template before DECEMBER 1
+ resources:
+ - title: Proactive Disclosure - Travel Expenses
+   resource_name: travelq
++  resource_id: 8282db2a-878f-475c-af10-ad56aa8fa72c
+   fields:
+ 
+   - datastore_id: ref_number
+diff --git a/ckanext/canada/templates/internal/organization/edit_base.html b/ckanext/canada/templates/internal/organization/edit_base.html
+index 7a657f6..4d913a9 100644
+--- a/ckanext/canada/templates/internal/organization/edit_base.html
++++ b/ckanext/canada/templates/internal/organization/edit_base.html
+@@ -32,3 +32,11 @@
+   </div>
+ </div>
+ {% endblock %}
++
++{% block breadcrumb_content %}
++  <li>{% link_for _('Organizations'), controller='organization', action='index' %}</li>
++  {% block breadcrumb_content_inner %}
++    <li>{% link_for h.get_translated(c.group_dict, 'title')| truncate(30), controller='organization', action='read', id=organization.name %}</li>
++    <li class="active">{% link_for _('Manage'), controller='organization', action='edit', id=organization.name %}</li>
++  {% endblock %}
++{% endblock %}
+diff --git a/ckanext/canada/templates/internal/recombinant/resource_edit.html b/ckanext/canada/templates/internal/recombinant/resource_edit.html
+index 002686f..2405147 100644
+--- a/ckanext/canada/templates/internal/recombinant/resource_edit.html
++++ b/ckanext/canada/templates/internal/recombinant/resource_edit.html
+@@ -1,9 +1,7 @@
+ {% ckan_extends %}
+ 
+-{% import 'macros/canada_read.html' as cr %}
+-
+ {% block organization_display %}
+-  {{- cr.split_bilingual_field(org.title, h.lang()) | truncate(60) -}}
++  {{- h.get_translated(org, 'title') | truncate(60) -}}
+ {% endblock %}
+ 
+ {# we want a wide display for the table #}
+diff --git a/ckanext/canada/templates/internal/recombinant/snippets/xls_upload.html b/ckanext/canada/templates/internal/recombinant/snippets/xls_upload.html
+index 1e9ee46..0d9d9ba 100644
+--- a/ckanext/canada/templates/internal/recombinant/snippets/xls_upload.html
++++ b/ckanext/canada/templates/internal/recombinant/snippets/xls_upload.html
+@@ -5,7 +5,7 @@
+   {% set geno = h.recombinant_get_geno(pkg.dataset_type) %}
+   {% if 'upload_info' in geno %}
+     <div class="alert alert-info" role="alert">
+-      <p>{{ _(geno.upload_info) }}</p>
++      <p>{{ _(geno.upload_info) | safe }}</p>
+     </div>
+   {% endif %}
+ {% endblock %}
+@@ -14,8 +14,8 @@
+   {{ super() }}
+   {% set geno = h.recombinant_get_geno(pkg.dataset_type) %}
+   {% if 'upload_warn' in geno %}
+-    <div class="alert alert-danger">
+-      <p>{{ _(geno.upload_warn) }}</p>
++    <div class="alert alert-danger" style="font-weight:bold;">
++      <p>{{ _(geno.upload_warn) | safe }}</p>
+     </div>
+   {% endif %}
+ {% endblock %}
+diff --git a/ckanext/canada/templates/internal/scheming/form_snippets/organization.html b/ckanext/canada/templates/internal/scheming/form_snippets/organization.html
+index 478716b..9b76e6e 100644
+--- a/ckanext/canada/templates/internal/scheming/form_snippets/organization.html
++++ b/ckanext/canada/templates/internal/scheming/form_snippets/organization.html
+@@ -1,9 +1,7 @@
+ {% ckan_extends %}
+ 
+-{% import 'macros/canada_read.html' as cr %}
+-
+ {% block organization_option %}
+-  {% set title = cr.split_bilingual_field(organization.title, h.lang())[:70] %}
++  {% set title = h.get_translated(organization, 'title')[:70] %}
+   <option value="{{ organization.id }}" {% if selected_org %} selected="selected" {% endif %}>{{ title }}</option>
+ {% endblock %}
+ 
+diff --git a/ckanext/canada/templates/internal/scheming/package/snippets/package_form.html b/ckanext/canada/templates/internal/scheming/package/snippets/package_form.html
+index 98a71a6..cc991bc 100644
+--- a/ckanext/canada/templates/internal/scheming/package/snippets/package_form.html
++++ b/ckanext/canada/templates/internal/scheming/package/snippets/package_form.html
+@@ -37,7 +37,7 @@
+           <div class="form-group control-medium">
+             <label>{{_('Metadata Scheme')}}</label>
+             <input class="form-control" readonly
+-              value="{{ m1 }}" size='50'/>
++              value="{{ m1 }}" size='60'/>
+             <small class="text-info">{{_('The name of the metadata scheme used (including profile name)')}}</small>
+           </div>
+           <div class="form-group control-medium">
+diff --git a/ckanext/canada/templates/internal/user/new_user_form.html b/ckanext/canada/templates/internal/user/new_user_form.html
+index 0f3b566..9771ba5 100644
+--- a/ckanext/canada/templates/internal/user/new_user_form.html
++++ b/ckanext/canada/templates/internal/user/new_user_form.html
+@@ -4,18 +4,20 @@
+   {{ form.errors(error_summary) }}
+   {% set valid_dict1={ 'oninvalid': "setCustomValidity('"+_("Please fill out this field.")+"')", 'onchange':"setCustomValidity('')"} %}
+   {% set valid_dict2={ 'oninvalid': "setCustomValidity('"+_("Please enter a valid email address.")+"')", 'onchange':"setCustomValidity('')"} %}
+-  {% call form.input("name", id="field-username", label=_("Username"), placeholder="username", value=data.name, error=errors.name, attrs=valid_dict1, is_required=true)  %}
++  {% call form.input("name", id="field-username", label=_("Username"), placeholder=_("username"), value=data.name, error=errors.name, attrs=valid_dict1, is_required=true)  %}
+     {{ form.info(_('Use only lowercase letters (a-z) and numbers (0-9) with optional hyphens (-) and underscores (_)')) }}
+   {% endcall %}
++  {% set prefix = h.url_for(controller='ckanext.canada.controller:CanadaController', action='organization_autocomplete') %}
+   {{ form.input("fullname", id="field-fullname", label=_("Full Name"), placeholder="Joe Bloggs", value=data.fullname, error=errors.fullname, attrs=valid_dict1, is_required=true) }}
+   {{ form.input("email", id="field-email", label=_("Email"), type="email", placeholder="joe.bloggs@tbs-sct.gc.ca", value=data.email, error=errors.email, attrs=valid_dict2, is_required=true) }}
+-  {% set format_attrs = {'data-module': 'autocomplete', 'data-module-source': '/organization/autocomplete?q=?', 'data-key': 'title'} %}
++  {% set format_attrs = {'data-module': 'autocomplete', 'data-module-source': prefix+'?q=?', 'data-key': 'title'} %}
+   {% do format_attrs.update(valid_dict1) %}
+-  {{ form.input('department', id='field-department', label=_('Organization'), placeholder=_('Treasury Board Secretariat'), value=data.department, error=errors.department, classes=['control-medium'], attrs=format_attrs, is_required=true) }}
++  {% set org_preset = h.scheming_get_preset('canada_org_title') %}
++  {% set org_placeholder = h.scheming_language_text( org_preset.form_placeholder) %}  
++  {{ form.input('department', id='field-department', label=_('Organization'), placeholder=org_placeholder, value=data.department, error=errors.department, classes=['control-medium'], attrs=format_attrs, is_required=true) }}
+   {{ form.input("phoneno", id="field-phoneno", label=_("Phone Number"), placeholder="000 000 0000", value=data.phoneno, error=errors.phoneno, classes=["control-medium"]) }}
+-  {{ form.input("password1", id="field-password", label=_("Password"), type="password", placeholder="••••••••", value=data.password1, error=errors.password1, attrs=valid_dict1, is_required=true) }}
+-  {{ form.input("password2", id="field-confirm-password", label=_("Confirm"), type="password", placeholder="••••••••", value=data.password2, error=errors.password1, attrs=valid_dict1, is_required=true) }}
+-
++  {{ form.input("password1", id="field-password", label=_("Password"), type="password", placeholder="••••••••", value=data.password1, error=errors.password1, attrs={'validationMessage':vldmsg}, is_required=true) }}
++  {{ form.input("password2", id="field-confirm-password", label=_("Confirm"), type="password", placeholder="••••••••", value=data.password2, error=errors.password1, attrs={'validationMessage':vldmsg}, is_required=true) }}
+ 
+   <div class="form-group">
+     <button class="btn btn-primary" type="submit" name="save">{{ _("Create Account") }}</button>
+diff --git a/ckanext/canada/templates/internal/user/read_base.html b/ckanext/canada/templates/internal/user/read_base.html
+index 034fe63..dce0f71 100644
+--- a/ckanext/canada/templates/internal/user/read_base.html
++++ b/ckanext/canada/templates/internal/user/read_base.html
+@@ -21,7 +21,7 @@
+         <dd><ul>
+           {% for org in h.user_organizations(user) %}
+             {% set url = h.url_for(org.type ~ '_read', action='read', id=org.name) %}
+-            <li><a href="{{ url }}">{{cr.split_bilingual_field(org.title, h.lang())}}</a></li>
++            <li><a href="{{ url }}">{{ h.get_translated(org, 'title') }}</a></li>
+           {% endfor %}
+         </ul></dd>
+       </dl>
+diff --git a/ckanext/canada/templates/public/macros/canada_read.html b/ckanext/canada/templates/public/macros/canada_read.html
+index 2bd3814..3106beb 100644
+--- a/ckanext/canada/templates/public/macros/canada_read.html
++++ b/ckanext/canada/templates/public/macros/canada_read.html
+@@ -236,7 +236,7 @@ Search Facet Formatters
+       #}
+       {% set org = h.get_organization(value) %}
+       {%- if org -%}
+-        {{ split_bilingual_field(org.title, h.lang()) }}
++        {{ h.get_translated(org, 'title') }}
+       {%- else -%}
+         {{ value }}
+       {%- endif -%}
+diff --git a/ckanext/canada/templates/public/organization/edit_base.html b/ckanext/canada/templates/public/organization/edit_base.html
+index 4e5a7d4..c521e3b 100644
+--- a/ckanext/canada/templates/public/organization/edit_base.html
++++ b/ckanext/canada/templates/public/organization/edit_base.html
+@@ -1,3 +1,2 @@
+ {% ckan_extends %}
+-{% import 'macros/canada_read.html' as cr %}
+-{% block subtitle %}{{ cr.split_bilingual_field(c.group_dict.display_name, client_lang) }}{% endblock %}
+\ No newline at end of file
++{% block subtitle %}{{ h.get_translated(c.group_dict, 'title') }}{% endblock %}
+diff --git a/ckanext/canada/templates/public/organization/read_base.html b/ckanext/canada/templates/public/organization/read_base.html
+index 41e4125..3037f69 100644
+--- a/ckanext/canada/templates/public/organization/read_base.html
++++ b/ckanext/canada/templates/public/organization/read_base.html
+@@ -5,7 +5,7 @@
+   <li>{% link_for _('Organizations'), controller='organization', action='index' %}</li>
+ {% endblock %}
+ 
+-{% block subtitle %}{{ cr.split_bilingual_field(c.group_dict.display_name, client_lang) }}{% endblock %}
++{% block subtitle %}{{ h.get_translated(c.group_dict, 'title') }} {% endblock %}
+ 
+ {% block primary_content %}
+ <div class="row">
+@@ -32,7 +32,7 @@
+     </header>
+   </div>
+   <div class="col-md-12 mrgn-bttm-md">
+-  {% block primary_content_inner %}
++  {% block primary_content_inner %}       
+   {% endblock %}
+   </div>
+ </div>
+diff --git a/ckanext/canada/templates/public/organization/snippets/organization_item.html b/ckanext/canada/templates/public/organization/snippets/organization_item.html
+index 47bdfba..2878a2a 100644
+--- a/ckanext/canada/templates/public/organization/snippets/organization_item.html
++++ b/ckanext/canada/templates/public/organization/snippets/organization_item.html
+@@ -5,7 +5,7 @@
+    {%- else -%}
+      {{ _('This organization has no description') }}
+   {%- endif -%}">
+-  {{ h.truncate(cr.split_bilingual_field(organization.display_name, h.lang()), length=70, whole_word=True) }}</a>
++  {{ h.truncate( h.get_translated(organization, 'title'), length=70, whole_word=True) }}</a>
+ </dt>
+ <dd class="text-right">
+   {%- if organization.package_count -%}
+diff --git a/ckanext/canada/templates/public/package/read.html b/ckanext/canada/templates/public/package/read.html
+index 5915497..5568c10 100644
+--- a/ckanext/canada/templates/public/package/read.html
++++ b/ckanext/canada/templates/public/package/read.html
+@@ -60,7 +60,12 @@
+         {# For legacy reasons, organization titles are not stores the same way as
+         other multilingual fields, so special case it. #}
+         {% set owner_org = h.scheming_field_by_name(schema.dataset_fields, 'owner_org') %}
+-        {% set owner_org_title = cr.split_bilingual_field(pkg.organization.title, h.lang()) %}
++        {% if pkg.organization.get('title_translated') %}
++          {# hack, just not to re-index all package in solr #}
++          {% set owner_org_title = h.get_translated(pkg.organization, 'title') %}
++        {% else %}
++          {% set owner_org_title = cr.split_bilingual_field(pkg.organization.title, h.lang()) %}
++        {% endif %}
+         <li class="list-group-item">
+           <strong>{{ h.scheming_language_text(owner_org.label) }}:</strong>
+           {{ owner_org_title }}
+diff --git a/ckanext/canada/templates/public/package/search.html b/ckanext/canada/templates/public/package/search.html
+index f7f035f..413696e 100644
+--- a/ckanext/canada/templates/public/package/search.html
++++ b/ckanext/canada/templates/public/package/search.html
+@@ -57,11 +57,6 @@ Please review your spelling, or reduce the number of filters selected.
+ </p>
+ {% endblock %}
+ 
+-{% block styles %}
+-  {{ super() }}
+-  <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" rel="stylesheet">
+-{% endblock %}
+-
+ {% block scripts %}
+   {{ super() }}
+ 
+diff --git a/ckanext/canada/templates/public/package/snippets/resource_item.html b/ckanext/canada/templates/public/package/snippets/resource_item.html
+index e506b46..5cada85 100644
+--- a/ckanext/canada/templates/public/package/snippets/resource_item.html
++++ b/ckanext/canada/templates/public/package/snippets/resource_item.html
+@@ -17,6 +17,33 @@
+   <td>
+     {% snippet 'scheming/snippets/display_field.html',
+       field=name_field, data=res, entity_type='dataset', object_type=pkg.type %}
++    {% set csv_dict = h.recombinant_csv_dict(res.id) %}
++    {% if csv_dict %}
++      <details style="display: inline; border-style: none;"><summary style="outline: none;">{{ _('Data Columns info') }}</summary>
++      <table id="csv_dict" class="table table-striped" data-role="table" data-mode="columntoggle"
++        data-wb-tables='{
++        "paging": true,
++        "data": [["asdf", "asdf", "asd"], ],
++        }'>
++        <thead>
++          <tr>
++              <th scope="col" data-priority="2">{{ _('Column name') }}</th>
++              <th>{{ _('English descirption') }}</th>
++              <th>{{ _('French description') }}</th>
++          </tr>
++        </thead>
++        <tbody>
++      {% for col_name, col_en, col_fr in csv_dict %}
++          <tr>
++              <td>{{ col_name }}</td>
++              <td>{{ col_en }}</td>
++              <td>{{ col_fr }}</td>
++          </tr>
++      {% endfor %}
++        </tbody>
++      </table>
++      </details>
++    {% endif %}
+   </td>
+   <td class="td-center">
+     {% snippet 'scheming/snippets/display_field.html',
+@@ -25,6 +52,38 @@
+   <td nowrap class="td-center">
+     {% snippet 'scheming/snippets/display_field.html',
+       field=format_field, data=res, entity_type='dataset', object_type=pkg.type %}
++    {% set csv_dict = h.recombinant_csv_dict(res.id) %}
++    {% if csv_dict %}
++    <div>
++      <a href="#mid-screen" aria-controls="mid-screen" class="overlay-lnk" role="button">Field Info</a>
++    <section id="mid-screen" class="wb-overlay modal-content overlay-def wb-popup-mid">
++	<header class="modal-header">
++		<h2 class="modal-title">Middle screen overlay</h2>
++	</header>
++        <div class="modal-body">
++      <table id="csv_dict2" class="table table-striped" style="white-space: normal;">
++        <thead>
++          <tr>
++              <th width='15%'>{{ _('Column name') }}</th>
++              <th width='30%'>{{ _('English descirption') }}</th>
++              <th width='30%'>{{ _('French description') }}</th>
++          </tr>
++        </thead>
++        <tbody>
++      {% for col_name, col_en, col_fr in csv_dict %}
++          <tr>
++              <td>{{ col_name }}</td>
++              <td>{{ col_en }} </td>
++              <td>{{ col_fr }}</td>
++          </tr>
++      {% endfor %}
++        </tbody>
++      </table>
++        </div>
++    </section> 
++    </div>
++    
++    {% endif %}
+   </td>
+   <td class="td-center">
+     {% snippet 'scheming/snippets/display_field.html',
+diff --git a/ckanext/canada/templates/public/snippets/facet_list.html b/ckanext/canada/templates/public/snippets/facet_list.html
+index c74c6dd..202bfff 100644
+--- a/ckanext/canada/templates/public/snippets/facet_list.html
++++ b/ckanext/canada/templates/public/snippets/facet_list.html
+@@ -1,5 +1,4 @@
+ {% ckan_extends %}
+-{% import 'macros/canada_read.html' as cr %}
+ 
+ {% set facet_name = title + 's' %}
+ 
+@@ -13,10 +12,11 @@
+         <ul class="list-unstyled list-facets">
+           {% for item in items | sort(attribute='count', reverse=true) %}
+             {% set href = h.remove_url_param(name, item.name, extras=extras, alternative_url=alternative_url) if item.active else h.add_url_param(new_params={name: item.name}, extras=extras, alternative_url=alternative_url) %}
++            {% set translated_title = h.get_translated( h.get_organization_extra(item), 'title') if name=='organization' else item.display_name %}
+             {% set label =
+               h.scheming_choices_label(scheming_choices, item.name)
+               if scheming_choices
+-              else cr.split_bilingual_field(item.display_name, h.lang()) %}
++              else translated_title %}
+             {% set count = count_label(item['count']) if count_label else ('(%d)' % item['count']) %}
+               <li class="nav-item{% if item.active %} active{% endif %} facet-item" >
+                 <a href="{{ href }}">
+@@ -44,7 +44,7 @@
+         <li>
+           <a href="{{ h.remove_url_param(name, extras=extras, alternative_url=alternative_url) }}" class="action"
+                title="{{_('Clear All')}} {{facet_name}}">
+-            <span class="glyphicon glyphicon-remove"></span> {{ _('Clear All') }}</a></li>
++            <span class="glyphicon glyphicon-remove"></span> {{ _('Clear All') }}
+           </a>
+         </li>
+       </ul>
+diff --git a/ckanext/canada/templates/public/snippets/organization.html b/ckanext/canada/templates/public/snippets/organization.html
+index 6827a30..ddecdd9 100644
+--- a/ckanext/canada/templates/public/snippets/organization.html
++++ b/ckanext/canada/templates/public/snippets/organization.html
+@@ -15,8 +15,7 @@ Example:
+ 
+ {% with truncate=truncate or 0, url=h.url_for(controller='organization', action='read', id=organization.name) %}
+ <div class="panel panel-info">
+-  <div class="panel-heading text-center">{{cr.split_bilingual_field(organization.title or organization.name,
+-    h.lang())}}
++  <div class="panel-heading text-center">{{h.get_translated(organization, 'title')}}
+   </div>
+   <div class="panel-body">
+     {% if organization.description %}
+diff --git a/ckanext/canada/templates/public/snippets/package_item.html b/ckanext/canada/templates/public/snippets/package_item.html
+index 5344e00..5272459 100644
+--- a/ckanext/canada/templates/public/snippets/package_item.html
++++ b/ckanext/canada/templates/public/snippets/package_item.html
+@@ -1,5 +1,4 @@
+ {% ckan_extends %}
+-{% import 'macros/canada_read.html' as cr %}
+ {% block package_item %}
+ <li>
+   <article class="panel panel-default mrgn-bttm-sm">
+@@ -34,7 +33,7 @@
+     {% block publisher_info %}
+     <div class="row mrgn-tp-sm">
+       <div class="col-md-3"><em>{{ _('Organization') }}: </em></div>
+-      <div class="cold-md-9">{{ cr.org_field(package, client_lang) }}</div>
++      <div class="cold-md-9">{{ h.get_translated(package.organization, 'title') }}</div>
+     </div>
+     {% endblock %}
+ 
+diff --git a/ckanext/canada/templates/public/snippets/sort_by.html b/ckanext/canada/templates/public/snippets/sort_by.html
+index 7a941a0..e4fdb92 100644
+--- a/ckanext/canada/templates/public/snippets/sort_by.html
++++ b/ckanext/canada/templates/public/snippets/sort_by.html
+@@ -11,6 +11,7 @@ Example:
+ <div class="form-group">
+   <label for="field-order-by" class="control-label">{{ _('Order by') }}</label>
+   <select id="field-order-by" name="sort" class="form-control input-sm" onchange="this.form.submit()">
++    <option value="score desc,metadata_modified desc" >{{ _('Relevance') }}</option>
+     {% if h.lang() == 'fr' %}
+       <option value="title_fr asc"{% if sort=="title_fr asc" %} selected="selected"{% endif %}>{{ _('Name Ascending') }}</option>
+       <option value="title_fr desc"{% if sort=="title_fr desc" %} selected="selected"{% endif %}>{{ _('Name Descending') }}</option>
+@@ -18,7 +19,7 @@ Example:
+       <option value="title_string asc"{% if sort=="title_string asc" %} selected="selected"{% endif %}>{{ _('Name Ascending') }}</option>
+       <option value="title_string desc"{% if sort=="title_string desc" %} selected="selected"{% endif %}>{{ _('Name Descending') }}</option>
+     {% endif %}
+-    <option value="metadata_modified desc"{% if sort=='metadata_modified desc' or sort is none %} selected="selected"{% endif %}>{{ _('Last Modified') }}</option>
++    <option value="metadata_modified desc"{% if sort=='metadata_modified desc' %} selected="selected"{% endif %}>{{ _('Last Modified') }}</option>
+   </select>
+ 
+ </div>
+diff --git a/ckanext/canada/templates/public/user/read.html b/ckanext/canada/templates/public/user/read.html
+index a48f46d..dbc4633 100644
+--- a/ckanext/canada/templates/public/user/read.html
++++ b/ckanext/canada/templates/public/user/read.html
+@@ -8,7 +8,7 @@
+ 
+   {% for org in h.user_organizations(user) %}
+     {% set url = h.url_for(org.type ~ '_read', action='read', id=org.name) %}
+-    <li><a href="{{ url }}">{{cr.split_bilingual_field(org.title, h.lang())}}</a></li>
++    <li><a href="{{ url }}">{{h.get_translated(org, 'title')}}</a></li>
+   {% endfor %}
+   </ul>
+-{%- endblock -%}
+\ No newline at end of file
++{%- endblock -%}
+diff --git a/ckanext/canada/tests/test_validators.py b/ckanext/canada/tests/test_validators.py
+index 54d3ae9..433c94a 100644
+--- a/ckanext/canada/tests/test_validators.py
++++ b/ckanext/canada/tests/test_validators.py
+@@ -55,7 +55,7 @@ class TestNAVLSchema(FunctionalTestBase):
+         self.sysadmin_user = factories.Sysadmin()
+         self.normal_user = factories.User()
+         self.org = factories.Organization(
+-            title='en org name | fr org name')
++            title_translated={'en': u'An Org', 'fr':u'Un Org'})
+ 
+         self.sysadmin_action = LocalCKAN(
+             username=self.sysadmin_user['name']).action
+diff --git a/ckanext/canada/validators.py b/ckanext/canada/validators.py
+index 0b3cf6d..bf76ca2 100644
+--- a/ckanext/canada/validators.py
++++ b/ckanext/canada/validators.py
+@@ -140,8 +140,8 @@ def canada_copy_from_org_name(key, data, errors, context):
+         return
+ 
+     data[key] = json.dumps({
+-        'en': org['title'].split(' | ')[0],
+-        'fr': org['title'].split(' | ')[-1],
++        'en': org['title_translated']['en'],
++        'fr': org['title_translated']['fr'],
+     })
+ 
+ def canada_non_related_required(key, data, errors, context):
+diff --git a/setup.py b/setup.py
+index 7ad9df4..4710003 100644
+--- a/setup.py
++++ b/setup.py
+@@ -27,6 +27,7 @@ setup(
+     canada_public=ckanext.canada.plugins:DataGCCAPublic
+     canada_forms=ckanext.canada.plugins:DataGCCAForms
+     canada_package=ckanext.canada.plugins:DataGCCAPackageController
++    canada_activity=ckanext.canada.plugins:CanadaActivity
+ 
+     [paste.paster_command]
+     canada=ckanext.canada.commands:CanadaCommand

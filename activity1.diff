@@ -1,0 +1,256 @@
+diff --git a/ckanext/canada/activity.py b/ckanext/canada/activity.py
+new file mode 100644
+index 0000000..378a4ba
+--- /dev/null
++++ b/ckanext/canada/activity.py
+@@ -0,0 +1,108 @@
++from ckantoolkit import h
++from ckan.logic import get_action
++from ckan.common import _
++from ckan.lib.base import render
++from ckan.lib.helpers import url_for
++import datetime
++
++
++def datastore_activity_create(context, data_dict):
++    records = data_dict.get('records', [])
++    if data_dict.get('method')=='upsert':
++        activity_type = 'changed datastore'
++        count = len(records)
++        if count == 0:  # nil op
++            return
++    else:
++        activity_type = 'deleted datastore'
++        count = data_dict['total']
++    user = context['user']
++    model = context['model']
++    user_id = model.User.by_name(user.decode('utf8')).id
++    if activity_type == 'deleted datastore' and len(records) <10:
++        #  get last deleted activity for this user, if within 2 seconds, 
++        #   merge these activities
++        act = model.activity.user_activity_list(user_id, 1, 0)
++        now = datetime.datetime.now()
++        if act and len(act)>0 and (now - act[0].timestamp).total_seconds()<2 and (
++                act[0].activity_type == activity_type):
++            act = act[0]
++            print('old:', act)
++            act.data['count'] += count
++            if len(act.data['datasets']) < 10:
++                act.data['datasets'] += records
++            #avoid version
++            model.Session.query(model.Activity).filter_by(id=act.id).update(
++                {"data": act.data})
++            model.Session.refresh(act)
++            model.Session.flush()
++            model.repo.commit()
++            return
++    res_obj = model.Resource.get(data_dict['resource_id'])
++    pkg = model.Package.get(res_obj.package_id)
++    org = model.Group.get(pkg.owner_org)
++    activity_detail={'object_type': 'Datastore',
++        'activity_type': 'change',
++        'object_id': res_obj.package_id,
++        'data': 'something',}
++    activity_dict = {
++        'user_id': user_id,
++        'object_id': res_obj.package_id,
++        'activity_type': activity_type,
++#        'activity_detail': activity_detail,
++    }
++    activity_dict['data'] = {
++        'resource_id': data_dict['resource_id'],
++        'pkg_type': pkg.type,
++        'resource_name': res_obj.name,
++        'owner_org': org.name,
++        'count': count,
++        'datasets': records[:10],
++    }
++    activity_create_context = {
++        'model': context['model'],
++        'user': context['user'],
++        'defer_commit': False,
++        'ignore_auth': True,
++        'session': context['session'],
++    }
++    get_action('activity_create')(activity_create_context, activity_dict)        
++
++def get_snippet_datastore(activity, detail):
++    if activity['data'].get('pkg_type'):
++        org_name = activity['data']['owner_org']
++        resource_name = activity['data']['resource_name']
++        url = url_for(resource_name=resource_name,owner_org=org_name,
++            action='preview_table',
++            controller='ckanext.recombinant.controller:UploadController')
++        chromo = h.recombinant_get_chromo(resource_name)
++        return ''.join(['<a href="', url, '">', _(chromo['title']), '</a>'])
++    else:
++        return ''
++
++
++def get_snippet_datastore_detail(activity, detail):
++    records = activity['data']['datasets']
++    count = activity['data']['count']
++    if count==0:
++        return ' 0 ' + _('entries')
++    act_type = activity['activity_type']
++    resource_name = activity['data']['resource_name']
++    chromo = h.recombinant_get_chromo(resource_name)
++    rows = []
++    for f in chromo['fields']:
++        row = [f['label'],]
++        for record in records:
++            row.append(record[f['datastore_id']])
++        rows.append(row)
++    return render('snippets/popup_table.html', extra_vars = {
++        'id': activity['id'],
++        'name': str(count)+ ' ' +_('entries'),
++        'title': _(chromo['title']),
++        'rows': rows,})
++
++def activity_stream_string_changed_datastore(context, activity):
++    return _("{actor} updated the record {datastore} {datastore_detail}")
++
++def activity_stream_string_deleted_datastore(context, activity):
++    return _("{actor} deleted the record {datastore} {datastore_detail}")
+diff --git a/ckanext/canada/schemas/organization.yaml b/ckanext/canada/schemas/organization.yaml
+new file mode 100644
+index 0000000..1f786fe
+--- /dev/null
++++ b/ckanext/canada/schemas/organization.yaml
+@@ -0,0 +1,61 @@
++
++scheming_version: 1
++organization_type: organization
++
++about: 'open.canada.ca: organization metadata definition'
++about_url: http://github.com/open-data/ckanext-canada
++catalog_type_label:
++  en: Raw/Geo Data
++  fr: Données/géo
++
++form_languages:
++- en
++- fr
++
++
++#
++#   ORGANIZATION FIELDS
++#
++fields:
++
++- preset: canada_org_title
++- field_name: name
++  label:
++    en: URL
++    fr: URL
++  form_snippet: null
++- field_name: shortform
++  label:
++    en: Abbreviated Name English
++    fr: Abbreviated Name English
++  form_snippet: text.html
++
++- field_name: shortform_fr
++  label:
++    en: Abbreviated Name French
++    fr: Abbreviated Name French
++  form_snippet: text.html
++
++- field_name: desc
++  label:
++    en: Description
++    fr: Description
++  form_snippet: null
++
++
++- field_name: department_number
++  label:
++    en: Department Number
++    fr: Department Number
++  form_snippet: text.html
++- field_name: ati_email
++  label:
++    en: ATI E-mail
++    fr: ATI E-mail
++  form_snippet: text.html
++- field_name: opengov_email
++  label:
++    en: Open Government E-mail
++    fr: Open Government E-mail
++  form_snippet: text.html
++
+diff --git a/ckanext/canada/templates/internal/scheming/organization/group_form.html b/ckanext/canada/templates/internal/scheming/organization/group_form.html
+new file mode 100644
+index 0000000..0fd5561
+--- /dev/null
++++ b/ckanext/canada/templates/internal/scheming/organization/group_form.html
+@@ -0,0 +1,17 @@
++{% extends "scheming/organization/snippets/organization_form.html" %}
++
++{% block dataset_fields %}
++  {% if action == "edit" %}{{ super() }}{% endif %}
++{% endblock %}
++
++{% block save_text %}
++  {%- if action == "edit" -%}
++    {{ _('Update Organization') }}
++  {%- else -%}
++    {{ _('Create Organization') }}
++  {%- endif -%}
++{% endblock %}
++
++{% block delete_button %}
++  {% if action == "edit" %}{{ super() }}{% endif %}
++{% endblock %}
+diff --git a/ckanext/canada/templates/internal/scheming/organization/snippets/organization_form.html b/ckanext/canada/templates/internal/scheming/organization/snippets/organization_form.html
+new file mode 100644
+index 0000000..5ff0602
+--- /dev/null
++++ b/ckanext/canada/templates/internal/scheming/organization/snippets/organization_form.html
+@@ -0,0 +1,46 @@
++{% import 'macros/form.html' as form %}
++
++{%- if not c.group_type -%}
++    <p>
++        group_type not passed to template. your version of CKAN
++        might not be compatible with ckanext-scheming
++    </p>
++{%- endif -%}
++<form class="form-horizontal" method="post" data-module="basic-form">
++  {% block error_summary %}
++    {{ form.errors(error_summary) }}
++  {% endblock %}
++
++  {% block basic_fields %}
++    {% set attrs = {'data-module': 'slug-preview-target', 'class' : 'width-90'} %}
++    {%- set schema = h.scheming_get_organization_schema(c.group_type) -%}
++    {%- for field in schema['fields'] -%}
++        {% if field.field_name=='name' %}
++          {# Perhaps these should be moved into the controller? #}
++          {% set prefix = h.url_for(controller='organization', action='read', id='') %}
++          {% set domain = h.url_for(controller='organization', action='read', id='', qualified=true) %}
++          {% set domain = domain|replace("http://", "")|replace("https://", "") %}
++          {% set attrs = {'data-module': 'slug-preview-slug', 'data-module-prefix': domain, 'data-module-placeholder': '<organization>', 'class' : 'width-70'} %}
++
++          {{ form.prepend('name', label=_('URL'), prepend=prefix, id='field-url', placeholder=_('my-organization'), value=data.name, error=errors.name, attrs=attrs) }}
++        {%elif field.field_name=='desc' %}
++          {{ form.markdown('description', label=_('Description'), id='field-description', placeholder=_('A little information about my organization...'), value=data.description, error=errors.description) }}
++        {% else %}
++          {%- snippet 'scheming/snippets/form_field.html',
++          field=field, data=data, errors=errors, licenses=licenses,
++          entity_type='organization', object_type=c.group_type -%}
++        {% endif %}
++    {%- endfor -%}
++  {% endblock %}
++  <div class="form-actions indent-medium">
++    <p>
++      {% block delete_button %}
++        {% if h.check_access('organization_delete', {'id': data.id})  %}
++          {% set locale = h.dump_json({'content': _('Are you sure you want to delete this Organization?')}) %}
++          <button class="btn btn-danger" href="{% url_for controller='organization', action='delete', id=data.id %}" data-module="confirm-action" data-module-i18n="{{ locale }}">{% block delete_button_text %}{{ _('Delete') }}{% endblock %}</button>
++        {% endif %}
++      {% endblock %}
++      <button class="btn btn-primary" name="save" type="submit" >{% block save_text %}{{ _('Save Organization') }}{% endblock %}</button>
++    </p>
++  </div>
++</form>
