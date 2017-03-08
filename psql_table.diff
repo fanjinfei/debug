@@ -1,0 +1,84 @@
+diff --git a/ckanext/datastore/logic/action.py b/ckanext/datastore/logic/action.py
+index 2baa02f..ca69cdc 100644
+--- a/ckanext/datastore/logic/action.py
++++ b/ckanext/datastore/logic/action.py
+@@ -156,6 +156,79 @@ def datastore_create(context, data_dict):
+     result.pop('connection_url')
+     return result
+ 
++def datastore_diff(context, data_dict):
++    ''' get records that will be inserted or updated into db table
++    '''
++    schema = context.get('schema', dsschema.datastore_upsert_schema())
++    records = data_dict.pop('records', None)
++    data_dict, errors = _validate(data_dict, schema, context)
++    if records:
++        data_dict['records'] = records
++    if errors:
++        raise p.toolkit.ValidationError(errors)
++
++    p.toolkit.check_access('datastore_upsert', context, data_dict)
++
++    if not data_dict.pop('force', False):
++        resource_id = data_dict['resource_id']
++        _check_read_only(context, resource_id)
++
++    data_dict['connection_url'] = pylons.config['ckan.datastore.write_url']
++
++    res_id = data_dict['resource_id']
++    method = data_dict.get('method', None)
++    if method != 'upsert':
++        return None
++    resources_sql = sqlalchemy.text(u'''SELECT 1 FROM "_table_metadata"
++                                        WHERE name = :id AND alias_of IS NULL''')
++    results = db._get_engine(data_dict).execute(resources_sql, id=res_id)
++    res_exists = results.rowcount > 0
++
++    if not res_exists:
++        raise p.toolkit.ObjectNotFound(p.toolkit._(
++            u'Resource "{0}" was not found.'.format(res_id)
++        ))
++
++    connection = db._get_engine(data_dict).connect()
++    resources_sql = sqlalchemy.text(u'''CREATE TEMP TABLE temp_res (
++         like "{0}" INCLUDING DEFAULTS INCLUDING CONSTRAINTS ) ON COMMIT DROP;'''.format(res_id))
++    results = connection.execute(resources_sql)
++
++    data_dict['resource_id'] = 'temp_res'
++    data_dict['method'] = 'insert'
++    context['connection'] = connection
++    result = db.upsert_data(context, data_dict)
++    context.pop('connection')
++
++    fields = []
++    for k,v in data_dict['records'][0].iteritems():
++        fields.append(k)
++    fields_string = ','.join(fields)
++
++    resources_sql = sqlalchemy.text(u'''SELECT {1} from temp_res EXCEPT
++            select {1} from "{0}";'''.format(res_id, fields_string))
++    raw_results = connection.execute(resources_sql)
++
++    result_ds = {}
++    result = db.format_results(context, raw_results, result_ds)
++    connection.execute("DROP TABLE if EXISTS temp_res;")
++    connection.close()
++
++    result.pop('id', None)
++    result.pop('connection_url', None)
++    result.pop('fields', None)
++    data_dict['resource_id'] = result['resource_id'] = res_id
++    data_dict['method'] = result['method'] = method
++
++    if len(result['records']) > 0:
++        field_dict = []
++        for k,v in result['records'][0].iteritems():
++            if k not in fields:
++                field_dict.append(k)
++        for record in result['records']:
++            for k in field_dict:
++                record.pop(k, None)
++    return result
+ 
+ def datastore_upsert(context, data_dict):
+     '''Updates or inserts into a table in the DataStore
