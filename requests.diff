@@ -1,0 +1,379 @@
+From aedc0e515d83685e8047001b05980a005d8fc057 Mon Sep 17 00:00:00 2001
+From: Cory Benfield <lukasaoz@gmail.com>
+Date: Sun, 28 Jun 2015 16:56:37 +0100
+Subject: [PATCH 1/9] Handle complex redirect URIs on Python 3
+
+---
+ requests/sessions.py | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/requests/sessions.py b/requests/sessions.py
+index b11bdb6..ca4fee8 100644
+--- a/requests/sessions.py
++++ b/requests/sessions.py
+@@ -13,7 +13,7 @@
+ from datetime import datetime
+ 
+ from .auth import _basic_auth_str
+-from .compat import cookielib, OrderedDict, urljoin, urlparse
++from .compat import cookielib, OrderedDict, urljoin, urlparse, is_py3, str
+ from .cookies import (
+     cookiejar_from_dict, extract_cookies_to_jar, RequestsCookieJar, merge_cookies)
+ from .models import Request, PreparedRequest, DEFAULT_REDIRECT_LIMIT
+@@ -132,6 +132,13 @@ def resolve_redirects(self, response, stream=False, timeout=None,
+             parsed = urlparse(location_url)
+             location_url = parsed.geturl()
+ 
++            # On Python 3, the location header was decoded using Latin 1, but
++            # urlparse in requote_uri will encode it with UTF-8 before quoting.
++            # Because of this insanity, we need to fix it up ourselves by
++            # sending the URL back to bytes ourselves.
++            if is_py3 and isinstance(url, str):
++                url = url.encode('latin1')
++
+             # Facilitate relative 'location' headers, as allowed by RFC 7231.
+             # (e.g. '/path/to/resource' instead of 'http://domain.tld/path/to/resource')
+             # Compliant with RFC3986, we percent encode the url.
+
+From d185a40aaf5822386e1a153719152cc9e882f279 Mon Sep 17 00:00:00 2001
+From: Cory Benfield <lukasaoz@gmail.com>
+Date: Tue, 1 Sep 2015 09:25:13 +0100
+Subject: [PATCH 2/9] Split on bytestrings.
+
+---
+ requests/utils.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/requests/utils.py b/requests/utils.py
+index c5c3fd0..59dfc2e 100644
+--- a/requests/utils.py
++++ b/requests/utils.py
+@@ -422,7 +422,7 @@ def unquote_unreserved(uri):
+     """Un-escape any percent-escape sequences in a URI that are unreserved
+     characters. This leaves all reserved, illegal and non-ASCII bytes encoded.
+     """
+-    parts = uri.split('%')
++    parts = uri.split(b'%')
+     for i in range(1, len(parts)):
+         h = parts[i][0:2]
+         if len(h) == 2 and h.isalnum():
+
+From 5530091b86c60033e7e5a4f803e8d22a23f54779 Mon Sep 17 00:00:00 2001
+From: Cory Benfield <lukasaoz@gmail.com>
+Date: Tue, 1 Sep 2015 09:29:49 +0100
+Subject: [PATCH 3/9] Enhance unquote_unreserved to handle all strings
+
+---
+ requests/utils.py | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
+
+diff --git a/requests/utils.py b/requests/utils.py
+index 59dfc2e..fa05dd3 100644
+--- a/requests/utils.py
++++ b/requests/utils.py
+@@ -422,7 +422,15 @@ def unquote_unreserved(uri):
+     """Un-escape any percent-escape sequences in a URI that are unreserved
+     characters. This leaves all reserved, illegal and non-ASCII bytes encoded.
+     """
+-    parts = uri.split(b'%')
++    # Handle both bytestrings and unicode strings.
++    if isinstance(uri, bytes):
++        splitchar = b'%'
++        base = b''
++    else:
++        splitchar = u'%'
++        base = u''
++
++    parts = uri.split(splitchar)
+     for i in range(1, len(parts)):
+         h = parts[i][0:2]
+         if len(h) == 2 and h.isalnum():
+@@ -434,10 +442,10 @@ def unquote_unreserved(uri):
+             if c in UNRESERVED_SET:
+                 parts[i] = c + parts[i][2:]
+             else:
+-                parts[i] = '%' + parts[i]
++                parts[i] = splitchar + parts[i]
+         else:
+-            parts[i] = '%' + parts[i]
+-    return ''.join(parts)
++            parts[i] = splitchar + parts[i]
++    return base.join(parts)
+ 
+ 
+ def requote_uri(uri):
+
+From a3532632af32d72cc4877f98bf2a786b2d0505be Mon Sep 17 00:00:00 2001
+From: Cory Benfield <lukasaoz@gmail.com>
+Date: Thu, 1 Oct 2015 09:48:04 +0100
+Subject: [PATCH 4/9] Unicode/bytes tests for unquote_unreserved
+
+---
+ test_requests.py | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/test_requests.py b/test_requests.py
+index 45afd51..7baaf38 100755
+--- a/test_requests.py
++++ b/test_requests.py
+@@ -1468,6 +1468,20 @@ def test_requote_uri_properly_requotes(self):
+         quoted = 'http://example.com/fiz?buz=%25ppicture'
+         assert quoted == requote_uri(quoted)
+ 
++    def test_unquote_unreserved_handles_unicode(self):
++        """Unicode strings can be passed to unquote_unreserved"""
++        from requests.utils import unquote_unreserved
++        uri = u'http://example.com/fizz?buzz=%41%2C'
++        unquoted = u'http://example.com/fizz?buzz=A%2C'
++        assert unquoted == unquote_unreserved(uri)
++
++    def test_unquote_unreserved_handles_bytes(self):
++        """Bytestrings can be passed to unquote_unreserved"""
++        from requests.utils import unquote_unreserved
++        uri = b'http://example.com/fizz?buzz=%41%2C'
++        unquoted = b'http://example.com/fizz?buzz=A%2C'
++        assert unquoted == unquote_unreserved(uri)
++
+ 
+ class TestMorselToCookieExpires:
+     """Tests for morsel_to_cookie when morsel contains expires."""
+
+From e68dd5dca0a021279160ea7840ce66ab6660cac6 Mon Sep 17 00:00:00 2001
+From: Cory Benfield <lukasaoz@gmail.com>
+Date: Thu, 1 Oct 2015 09:48:17 +0100
+Subject: [PATCH 5/9] Get tests passing on Python 3.
+
+---
+ requests/utils.py | 18 ++++++++++++++++--
+ 1 file changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/requests/utils.py b/requests/utils.py
+index fa05dd3..f0c2ac6 100644
+--- a/requests/utils.py
++++ b/requests/utils.py
+@@ -13,6 +13,7 @@
+ import codecs
+ import collections
+ import io
++import functools
+ import os
+ import platform
+ import re
+@@ -26,7 +27,7 @@
+ from .compat import parse_http_list as _parse_list_header
+ from .compat import (quote, urlparse, bytes, str, OrderedDict, unquote, is_py2,
+                      builtin_str, getproxies, proxy_bypass, urlunparse,
+-                     basestring)
++                     basestring, is_py3)
+ from .cookies import RequestsCookieJar, cookiejar_from_dict
+ from .structures import CaseInsensitiveDict
+ from .exceptions import InvalidURL, FileModeWarning
+@@ -422,13 +423,26 @@ def unquote_unreserved(uri):
+     """Un-escape any percent-escape sequences in a URI that are unreserved
+     characters. This leaves all reserved, illegal and non-ASCII bytes encoded.
+     """
++    # This convert function is used to optionally convert the output of `chr`.
++    # In Python 3, `chr` returns a unicode string, while in Python 2 it returns
++    # a bytestring. Here we deal with that by optionally converting.
++    def _convert(is_bytes, c):
++        if is_py2 and not is_bytes:
++            return c.decode('ascii')
++        elif is_py3 and is_bytes:
++            return c.encode('ascii')
++        else:
++            return c
++
+     # Handle both bytestrings and unicode strings.
+     if isinstance(uri, bytes):
+         splitchar = b'%'
+         base = b''
++        convert = functools.partial(_convert, True)
+     else:
+         splitchar = u'%'
+         base = u''
++        convert = functools.partial(_convert, False)
+ 
+     parts = uri.split(splitchar)
+     for i in range(1, len(parts)):
+@@ -440,7 +454,7 @@ def unquote_unreserved(uri):
+                 raise InvalidURL("Invalid percent-escape sequence: '%s'" % h)
+ 
+             if c in UNRESERVED_SET:
+-                parts[i] = c + parts[i][2:]
++                parts[i] = convert(c) + parts[i][2:]
+             else:
+                 parts[i] = splitchar + parts[i]
+         else:
+
+From c26e82ed873a3fc7070f44d2fc19e3058c607c85 Mon Sep 17 00:00:00 2001
+From: Cory Benfield <lukasaoz@gmail.com>
+Date: Thu, 1 Oct 2015 10:23:14 +0100
+Subject: [PATCH 6/9] Add test for Issue 2653.
+
+---
+ test_requests.py | 17 +++++++++++++++--
+ 1 file changed, 15 insertions(+), 2 deletions(-)
+
+diff --git a/test_requests.py b/test_requests.py
+index 7baaf38..c62504e 100755
+--- a/test_requests.py
++++ b/test_requests.py
+@@ -17,7 +17,7 @@
+ from requests.auth import HTTPDigestAuth, _basic_auth_str
+ from requests.compat import (
+     Morsel, cookielib, getproxies, str, urljoin, urlparse, is_py3,
+-    builtin_str, OrderedDict)
++    builtin_str, OrderedDict, is_py2)
+ from requests.cookies import cookiejar_from_dict, morsel_to_cookie
+ from requests.exceptions import (
+     ConnectionError, ConnectTimeout, InvalidScheme, InvalidURL, MissingScheme,
+@@ -1603,6 +1603,7 @@ def __init__(self, order_of_redirects):
+         self.max_redirects = 30
+         self.cookies = {}
+         self.trust_env = False
++        self.location = '/'
+ 
+     def send(self, *args, **kwargs):
+         self.calls.append(SendCall(args, kwargs))
+@@ -1617,7 +1618,7 @@ def build_response(self):
+         except IndexError:
+             r.status_code = 200
+ 
+-        r.headers = CaseInsensitiveDict({'Location': '/'})
++        r.headers = CaseInsensitiveDict({'Location': self.location})
+         r.raw = self._build_raw()
+         r.request = request
+         return r
+@@ -1651,6 +1652,18 @@ def test_requests_are_updated_each_time(self, httpbin):
+                                  TestRedirects.default_keyword_args)
+             assert session.calls[-1] == send_call
+ 
++    @pytest.mark.skipif(is_py2, reason="requires python 3")
++    def test_redirects_with_latin1_header(self):
++        """Test that redirect headers decoded with Latin 1 are correctly
++        followed"""
++        session = RedirectSession([303])
++        session.location = u'http://xn--n8jyd3c767qtje.xn--q9jyb4c/ã\x83\x96ã\x83\xadã\x82°/'
++        prep = requests.Request('GET', httpbin('get')).prepare()
++        r0 = session.send(prep)
++
++        responses = list(session.resolve_redirects(r0, prep))
++        assert len(responses) == 1
++        assert responses[0].request.url == u'http://xn--n8jyd3c767qtje.xn--q9jyb4c/%E3%83%96%E3%83%AD%E3%82%B0/'
+ 
+ @pytest.fixture
+ def list_of_tuples():
+
+From 8000def20cf6fd61a7f311e2ea06636475b2bc6e Mon Sep 17 00:00:00 2001
+From: Cory Benfield <lukasaoz@gmail.com>
+Date: Sat, 3 Oct 2015 18:30:07 +0100
+Subject: [PATCH 7/9] Refactor unquote_unreserved to be simpler.
+
+---
+ requests/utils.py | 18 ++++++++----------
+ 1 file changed, 8 insertions(+), 10 deletions(-)
+
+diff --git a/requests/utils.py b/requests/utils.py
+index f0c2ac6..638219d 100644
+--- a/requests/utils.py
++++ b/requests/utils.py
+@@ -426,7 +426,7 @@ def unquote_unreserved(uri):
+     # This convert function is used to optionally convert the output of `chr`.
+     # In Python 3, `chr` returns a unicode string, while in Python 2 it returns
+     # a bytestring. Here we deal with that by optionally converting.
+-    def _convert(is_bytes, c):
++    def convert(is_bytes, c):
+         if is_py2 and not is_bytes:
+             return c.decode('ascii')
+         elif is_py3 and is_bytes:
+@@ -435,14 +435,12 @@ def _convert(is_bytes, c):
+             return c
+ 
+     # Handle both bytestrings and unicode strings.
+-    if isinstance(uri, bytes):
+-        splitchar = b'%'
+-        base = b''
+-        convert = functools.partial(_convert, True)
+-    else:
+-        splitchar = u'%'
+-        base = u''
+-        convert = functools.partial(_convert, False)
++    is_bytes = isinstance(uri, bytes)
++    splitchar = u'%'
++    base = u''
++    if is_bytes:
++        splitchar = splitchar.encode('ascii')
++        base = base.encode('ascii')
+ 
+     parts = uri.split(splitchar)
+     for i in range(1, len(parts)):
+@@ -454,7 +452,7 @@ def _convert(is_bytes, c):
+                 raise InvalidURL("Invalid percent-escape sequence: '%s'" % h)
+ 
+             if c in UNRESERVED_SET:
+-                parts[i] = convert(c) + parts[i][2:]
++                parts[i] = convert(is_bytes, c) + parts[i][2:]
+             else:
+                 parts[i] = splitchar + parts[i]
+         else:
+
+From 8f33e56c0d765fe41aa76d87cc9bc169a09e0955 Mon Sep 17 00:00:00 2001
+From: Cory Benfield <lukasaoz@gmail.com>
+Date: Thu, 7 Apr 2016 08:37:25 +0100
+Subject: [PATCH 8/9] Remove unneeded functools import.
+
+---
+ requests/utils.py | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/requests/utils.py b/requests/utils.py
+index 638219d..5c18e18 100644
+--- a/requests/utils.py
++++ b/requests/utils.py
+@@ -13,7 +13,6 @@
+ import codecs
+ import collections
+ import io
+-import functools
+ import os
+ import platform
+ import re
+
+From eab12fa0293ccd5b422bbf23bda2d0993ee4d0f6 Mon Sep 17 00:00:00 2001
+From: Cory Benfield <lukasaoz@gmail.com>
+Date: Thu, 7 Apr 2016 08:43:38 +0100
+Subject: [PATCH 9/9] Fixup Python 3 test failures.
+
+---
+ requests/sessions.py | 4 ++--
+ test_requests.py     | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/requests/sessions.py b/requests/sessions.py
+index ca4fee8..7f92fd7 100644
+--- a/requests/sessions.py
++++ b/requests/sessions.py
+@@ -136,8 +136,8 @@ def resolve_redirects(self, response, stream=False, timeout=None,
+             # urlparse in requote_uri will encode it with UTF-8 before quoting.
+             # Because of this insanity, we need to fix it up ourselves by
+             # sending the URL back to bytes ourselves.
+-            if is_py3 and isinstance(url, str):
+-                url = url.encode('latin1')
++            if is_py3 and isinstance(location_url, str):
++                location_url = location_url.encode('latin1')
+ 
+             # Facilitate relative 'location' headers, as allowed by RFC 7231.
+             # (e.g. '/path/to/resource' instead of 'http://domain.tld/path/to/resource')
+diff --git a/test_requests.py b/test_requests.py
+index c62504e..387276f 100755
+--- a/test_requests.py
++++ b/test_requests.py
+@@ -1653,7 +1653,7 @@ def test_requests_are_updated_each_time(self, httpbin):
+             assert session.calls[-1] == send_call
+ 
+     @pytest.mark.skipif(is_py2, reason="requires python 3")
+-    def test_redirects_with_latin1_header(self):
++    def test_redirects_with_latin1_header(self, httpbin):
+         """Test that redirect headers decoded with Latin 1 are correctly
+         followed"""
+         session = RedirectSession([303])
