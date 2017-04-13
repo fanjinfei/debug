@@ -120,7 +120,7 @@ class FollowDotCursor(object):
             self.cid = canvas.mpl_connect('motion_notify_event', self)
 
     def __del__(self):
-        print ("cursor deleted")
+        pass #print ("cursor deleted")
     def scaled(self, points):
         points = np.asarray(points)
         return points * (self.scale, 1)
