@@ -1,0 +1,30 @@
+under tc:
+(Preparing compiling environment)
+% tce-load -wil compiletc
+(Downloading and extracting patched Tiny Core Linux kernel)
+% cd /mnt1/sda1
+% sudo mkdir src
+% sudo chown tc src
+% wget http://distro.ibiblio.org/tinycorelinux/6.x/x86/release/src/kernel/linux-3.16.6-patched.txz
+% tar xvfJ linux-3.16.6-patched.txz
+
+% sudo mkdir /usr/src
+% sudo ln -s /mnt/sda1/src/linux-3.16.6 /usr/src/linux
+(OR export KERNEL_DIR)?
+
+% wget http://distro.ibiblio.org/tinycorelinux/6.x/x86/release/src/kernel/config-3.16.6-tinycore
+(Put the file in the source tree)
+% cp config-3.16.6-tinycore linux-3.16.6/.config
+
+% cd linux-3.16.6
+% make prepare
+% make modules  (we need modpost in VBoxLinuxAdditions.run)
+
+
+% sudo /mnt/sr0/VBoxLinuxAdditions.run
+
+% sudo mkdir /mnt/shared
+% sudo mount.vboxsf MyShared /mnt/shared
+
+need to 
+% ln -sf /lib /lib64
