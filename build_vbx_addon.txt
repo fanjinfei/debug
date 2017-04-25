@@ -1,5 +1,5 @@
 under tc:
-(Preparing compiling environment)
+(Preparing compiling environment) , also linux-kernel-env...tcz
 % tce-load -wil compiletc
 (Downloading and extracting patched Tiny Core Linux kernel)
 % cd /mnt1/sda1
