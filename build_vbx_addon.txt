@@ -28,3 +28,8 @@ under tc:
 
 need to 
 % ln -sf /lib /lib64
+
+sound (Host intel HD audio)
+#modprobe -r snd_hda_intel
+#modprobe snd_hda_intel model=intel-mac-v3
+
