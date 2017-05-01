@@ -32,4 +32,9 @@ need to
 sound (Host intel HD audio)
 #modprobe -r snd_hda_intel
 #modprobe snd_hda_intel model=intel-mac-v3
+#sudo chmod 777 -R /dev/snd
+#sudo alsactl store -f /home/tc/.xxx/asound.state
+#sudo alsactl restore -f /home/tc/.xxx/asound.state
 
+Firefox plugin directory (download npapi ver 25)
+~/.mozilla/plugins
