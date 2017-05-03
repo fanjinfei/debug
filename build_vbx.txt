@@ -3,6 +3,7 @@ svn co http://www.virtualbox.org/svn/vbox
 ./configure --disable-python --disable-java --disable-vmmraw --disable-qt --disable-opengl --disable-udptunnel --disable-docs
 	--disable-libvpx --disable-xpcom
 
+nasm, copy iPxeBiosRom
 iasl
 xslt
 mkisofs-tools
