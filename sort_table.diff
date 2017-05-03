@@ -1,0 +1,36 @@
+diff --git a/ckanext/canada/templates/public/package/read.html b/ckanext/canada/templates/public/package/read.html
+index 5915497..6a3d3dc 100644
+--- a/ckanext/canada/templates/public/package/read.html
++++ b/ckanext/canada/templates/public/package/read.html
+@@ -312,6 +312,21 @@ jQuery('a.resource-url-analytics').on('click', function() {
+     });
+   }
+ });
++
++$('th').click(function(){
++    var table = $(this).parents('table').eq(0)
++    var rows = table.find('tr:gt(0)').toArray().sort(comparer($(this).index()))
++    this.asc = !this.asc
++    if (!this.asc){rows = rows.reverse()}
++    for (var i = 0; i < rows.length; i++){table.append(rows[i])}
++})
++function comparer(index) {
++    return function(a, b) {
++        var valA = getCellValue(a, index), valB = getCellValue(b, index)
++        return $.isNumeric(valA) && $.isNumeric(valB) ? valA - valB : valA.localeCompare(valB)
++    }
++}
++function getCellValue(row, index){ return $(row).children('td').eq(index).html() }
+ </script>
+ {% endblock %}
+ 
+@@ -321,6 +336,9 @@ jQuery('a.resource-url-analytics').on('click', function() {
+ {%- block custom_styles %}
+ {{ super() }}
+ <link rel="stylesheet" href="http://open.canada.ca/sites/all/modules/custom/opendata_blog/css/opendata_blog.css" />
++<style>
++    th{cursor:n-resize;text-decoration:underline;}
++</style>
+ {% endblock %}
+ 
+ 

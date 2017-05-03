@@ -1,0 +1,69 @@
+svn co http://www.virtualbox.org/svn/vbox
+
+./configure --disable-python --disable-java --disable-vmmraw --disable-qt --disable-opengl --disable-udptunnel --disable-docs
+	--disable-libvpx --disable-xpcom
+
+iasl
+xslt
+mkisofs-tools
+libidl
+curl-dev
+libvpx-dev
+zlib_base-dev
+sdl-dev
+
+qttools5-dev-tools
+texlive-fonts-extra
+kernel header (/usr/src/linux)
+devmapper (lvm2)
+makeself (cp -a /usr/local/share/makeself/makeself.sh /usr/bin/makeself)
+
+
+dependency
+  ** Open Watcom was not found!
+Checking for iasl: found version 20160108, OK. iasl
+Checking for xslt: found, OK.
+Checking for mkisofs: found genisoimage 1.1.11 (Linux), OK.
+Checking for pthread: found, OK.
+Checking for libxml2: found version 2.9.3, OK.
+Checking for libIDL: found version 0.8.14, OK. libidl
+Checking for ssl: found version OpenSSL 1.0.2g  1 Mar 2016, OK.
+Checking for libcurl: found version 7.47.0, OK.
+Checking for libvpx: found version 1.5.0, OK.
+Checking for zlib: found version 1.2.8, OK.
+Checking for libpng: found version 1.2.54, OK.
+Checking for SDL: found version 1.2.15, OK.
+Checking for X libraries: found, OK.
+Checking for Xcursor: found, OK.
+Checking for Xinerama: found, OK.
+Checking for Xrandr: found, OK.
+Checking for Xmu: found, OK.
+Checking for Mesa / GLU: found version 1.4, OK.
+Checking for Qt5: found version 5.5.1, OK. qt5-base
+Checking for Qt5 devtools: found version moc 5.5.1, OK.
+Checking for Python support: found version 2.7.12, OK.
+Checking for Java support: OK. openjdk-8-source
+Checking for PulseAudio: found version 8.0.0 API version 12, OK.
+Checking for static stc++ library: found, OK.
+Checking for Linux kernel sources: found version 4.4.49, OK.
+Checking for ALSA: found version 1.1.0, OK.
+Checking for libdevmapper: found version 1.02.110 (2015-10-30), OK.
+Checking for libcap library: found, OK.
+Checking for compiler.h: compiler.h not found, OK.
+Checking for 32-bit support: OK. lib32z1-dev
+Checking for makeself: found version 2.2.0, OK. makeself
+
+
+Successfully generated '/home/jffan/src/vbox/AutoConfig.kmk' and '/home/jffan/src/vbox/env.sh'.
+Source '/home/jffan/src/vbox/env.sh' once before you start to build VBox:
+
+  source /home/jffan/src/vbox/env.sh
+  kmk
+
+To compile the kernel modules, do:
+
+  cd ./out/linux.amd64/release/bin/src
+  make
+
+
+
