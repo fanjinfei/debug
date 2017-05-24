@@ -1,7 +1,7 @@
 svn co http://www.virtualbox.org/svn/vbox
 
-./configure --disable-python --disable-java --disable-vmmraw --disable-qt --disable-opengl --disable-udptunnel --disable-docs
-	--disable-libvpx --disable-xpcom
+./configure --disable-python --disable-java --disable-vmmraw --disable-opengl --disable-udptunnel --disable-docs
+	--disable-hardening
 
 nasm, copy iPxeBiosRom
 iasl
@@ -17,7 +17,7 @@ qttools5-dev-tools
 texlive-fonts-extra
 kernel header (/usr/src/linux)
 devmapper (lvm2)
-makeself (cp -a /usr/local/share/makeself/makeself.sh /usr/bin/makeself)
+makeself (cp -a /tmp/tcloop/makeself/usr/local/share/makeself/makeself.sh /usr/bin/makeself)
 
 
 dependency
@@ -59,7 +59,7 @@ Successfully generated '/home/jffan/src/vbox/AutoConfig.kmk' and '/home/jffan/sr
 Source '/home/jffan/src/vbox/env.sh' once before you start to build VBox:
 
   source /home/jffan/src/vbox/env.sh
-  kmk
+  kmk (kmk clean, kmk all packing)
 
 To compile the kernel modules, do:
 
