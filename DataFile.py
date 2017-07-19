@@ -107,6 +107,7 @@ class DFile:
         data = []
         with gzip.open(filename) as fin:
             for line in fin:
+                line = line.decode('utf-8')
                 if state == -1:
                     if 'NODE_COORD_SECTION' in line:
                         state = 0

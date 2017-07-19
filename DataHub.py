@@ -89,7 +89,9 @@ class NData:
             ls2 = ls1
             
             l0 = min(ls2, key=lambda x:x[0]) # what if ls2 empty
-            if len(filter ( lambda x: x in hps, l0[-2:]) ) != 2:
+            _ls2 = filter ( lambda x: x in hps, l0[-2:])
+            _ls2 = [x for x in _ls2]
+            if len(_ls2) != 2:
                 continue
             min_hps.append(l0 )
 

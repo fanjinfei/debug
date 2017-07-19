@@ -58,7 +58,7 @@ def _get_data():
         x = i*math.pi/180.0
         d.append([ r*math.cos(x), r*math.sin(x)])
     
-    return d
+    #return d
     df = DFile('/home/jffan/src/data/tsp/lin105.tsp.gz')
     df = DFile('/home/jffan/src/data/tsp/ch150.tsp.gz')
     return df.data
@@ -429,7 +429,7 @@ def mytest():
         ind = event.ind
         txt = "{0:.5g},{1:.5g}".format(z[ind], y[ind])
         txt = "{0:.5g},{1:.2f}".format(z[ind], y[ind])
-        print 'onpick3 scatter:', ind, txt #npy.take(y, ind)
+        #print 'onpick3 scatter:', ind, txt #npy.take(y, ind)
 
 
     '''
