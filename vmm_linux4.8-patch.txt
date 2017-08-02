@@ -1,0 +1,39 @@
+I have sent a patch to correct this problem on Ubuntu 16.10 beta 2 on BitVisor, so I will send it.
+
+First of all, this problem is reproduced on other motherboards.
+
+This is a commit in this year (https://github.com/torvalds/linux/commit/d8bced79af1db6734f66b42064cc773cada2ce99)
+Although we started checking INVPCID, on the other hand, BitVisor did not validate INVPCID, but CPUID
+As it was letting the guest stay as it was, the guest issued INVPCID and it was falling.
+
+To solve this problem, please apply the following patch.
+
+
+Diff - r 76 db 0 ae 4260 b core / constants.h
+--- a / core / constants.h Mon Sep 12 20: 01: 54 2016 +0900
++++ b / core / constants.h Wed Oct 05 06: 04: 36 2016 +0900
+@@ -383, 6 +383, 7 @@
+ #define VMCS_PROC_BASED_VMEXEC_CTL2_ENABLE_RDTSCP_BIT 0x8
+ #define VMCS_PROC_BASED_VMEXEC_CTL2_ENABLE_VPID_BIT 0x20
+ #define VMCS_PROC_BASED_VMEXEC_CTL2_UNRESTRICTED_GUEST_BIT 0x80
++ # Define VMCS_PROC_BASED_VMEXEC_CTL2_ENABLE_INVPCID_BIT 0x1000
+ #define VMCS_PROC_BASED_VMEXEC_CTL2_ENABLE_XSAVES_BIT 0x100000
+ #define VMCS_GUEST_ACTIVITY_STATE_ACTIVE 0x0
+ #define VMCS_GUEST_ACTIVITY_STATE_HLT 0x1
+Diff - r 76 db 0 ae 4260 b core / vt - init. C
+--- a / core / vt_init.c Mon Sep 12 20: 01: 54 2016 +0900
++++ b / core / vt_init.c Wed Oct 05 06: 04: 36 2016 +0900
+@@ -300, 6 + 300, 10 @@
+                    VMCS_PROC_BASED_VMEXEC_CTL 2 _ UNRESTRICTED_GUEST_BIT)
+                        Current-> u.vt.unrestricted_guest_available = true;
+                If (procbased_ctls 2 _and &
++ VMCS_PROC_BASED_VMEXEC_CTL 2 _ENABLE_INVPCID_BIT)
++ Procbased_ctls 2 | =
++ VMCS_PROC_BASED_VMEXEC_CTL 2 _ ENABLE_INVPCID_BIT;
++ If (procbased_ctls 2 _and &
+                    VMCS_PROC_BASED_VMEXEC_CTL 2 _ ENABLE_RDTSCP_BIT)
+                        Procbased_ctls 2 | =
+                                VMCS_PROC_BASED_VMEXEC_CTL 2 _ ENABLE_RDTSCP_BIT;
+
+
+
