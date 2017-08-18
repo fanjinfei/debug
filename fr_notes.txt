@@ -1,0 +1,12 @@
+è ë, ï, é, ü, ô, ç, ñ, å,  
+Input method in Ubuntu 16.04: select "French (Canada)" keyboard layout, the following key's are french.
+
+` + e --> è
+<Alt Gr>´ + e --> é
+¸ + e --> ȩ
+¨ + e --> ë  (shift + ¸)
+^ + e --> ê  
+The above special char (press twice it shows itself).
+
+Je m'appelle - My name is
+s'il vois pla
