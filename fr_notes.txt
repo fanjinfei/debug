@@ -1,4 +1,4 @@
-è ë, ï, é, ü, ô, ç, ñ, å,  
+è ë, ï, é, ü, ô, ç, ñ, å,
 Input method in Ubuntu 16.04: select "French (Canada)" keyboard layout, the following key's are french.
 
 ` + e --> è
@@ -9,4 +9,9 @@ Input method in Ubuntu 16.04: select "French (Canada)" keyboard layout, the foll
 The above special char (press twice it shows itself).
 
 Je m'appelle - My name is
-s'il vois pla
+s'il vois plait -- please
+enchanté(e) -- nice to meet you, pleased to meet you
+suis -- am (conjugated form of être)
+appelez-moi -- call me (formal singual or plural form)
+je/j' -- I
+Mademoiselle -- Miss
