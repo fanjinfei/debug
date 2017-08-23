@@ -1,4 +1,5 @@
 è ë, ï, é, ü, ô, ç, ñ, å,
+ Windows, there is a better solution: switch the keyboard layout to US-international and then type [`] followed by [a] to display [à]. Still on Windows, the software EasyType makes it even easier: press once [e] to get [e], twice [e] to get [é], three times [e] to get [è]...
 Input method in Ubuntu 16.04: select "French (Canada)" keyboard layout, the following key's are french.
 
 ` + e --> è
