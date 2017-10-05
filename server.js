@@ -8,7 +8,8 @@ var async = require('async');
 
 var vurl = "http://open.canada.ca/data/api/action/package_show?id=4ae27978-0931-49ab-9c17-0b119c0ba92f";
 
-var proxyUrl = "http://" + user + ":" + password + "@" + host + ":" + port;
+//var proxyUrl = "http://" + user + ":" + password + "@" + host + ":" + port;
+var proxyUrl = process.argv[2]
 
 var pRequest = request.defaults({'proxy': proxyUrl});
 
@@ -47,6 +48,7 @@ console.log('my frist server');
 	}, cb1);
     }
 
+
 http.createServer(function (req, res) {
     res.writeHead(200, {'Content-Type': 'text/plain'});
     res.write("The date and time are currently: " + dt.myDateTime());
@@ -61,17 +63,19 @@ http.createServer(function (req, res) {
         res.write('a');
         res.write('b');
         res.write('c\n');
-        callback();
+        callback(null, "abc");
     }, function(callback) {
         res.write('x');
         res.write('y');
         res.write('z\n');
 	b = "modified b ";
-        callback();
-    } ], function done(err, results) {
+        callback(null, "xyz");
+    } ], function done(err, results) { //this is the callback function
         if (err) {
             throw err;
         }
+	console.log(results);
+	b = results[0] + " | " + results[1];
         //res.end("\nDone!");
     });
 
