@@ -1,10 +1,12 @@
 # from http://flask.pocoo.org/ tutorial
 from flask import Flask
-app = Flask(__name__)
+from flask import render_template
+app = Flask(__name__, template_folder="/home/jffan/src/debug/")
 
 @app.route('/<string:page_name>/')
 def static_page(page_name):
-    return "Hello World! [" + page_name + "]"
+    return render_template('%s' % page_name)
+    #return "Hello World! [" + page_name + "]"
     #return render_template('%s.html' % page_name)
 
 

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script>
+$(document).ready(function(){
+    $("button2").click(function(){
+        $.getJSON("demo_ajax_json.js", function(result){
+            $.each(result, function(i, field){
+                $("div").append(field + " ");
+            });
+        });
+    });
+});
+
+$(document).ready(function(){
+    $("button").click(function(){
+      
+$.ajax({
+        type: "GET",
+        crossDomain: true,
+//        url: 'https://www.w3schools.com/jquery/demo_ajax_json.js',
+        url: 'http://open.canada.ca/data/api/action/package_show?id=4ae27978-0931-49ab-9c17-0b119c0ba92f?callback=?',
+        data: {},
+        dataType: 'json',
+        success: function(res) {
+            alert('Done');
+        }
+    });
+  
+    });
+});
+
+</script>
+</head>
+<body>
+
+<button>Get JSON data</button>
+
+<div></div>
+
+</body>
+</html>
