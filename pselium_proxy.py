@@ -2,15 +2,23 @@ from pandas.io.html import read_html
 from selenium import webdriver
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium.webdriver.common.proxy import *
+from selenium.webdriver.common.keys import Keys
 
 from base64 import b64encode
 import sys
 import time
 
+#sudo apt install xvfb, pip install PyVirtualDisplay
+from pyvirtualdisplay import Display
+from selenium import webdriver
+
+display = Display(visible=0, size=(800, 600))
+display.start()
+
 #firefox -p  --create test profile
 #firefox -p test -- install proxy (FoxyProxy)
 
-prof = webdriver.FirefoxProfile("/home/user/.mozilla/firefox/x95t3pq4.test")
+prof = webdriver.FirefoxProfile(sys.argv[1]) #"/home/user/.mozilla/firefox/x95t3pq4.test")
 '''
 prof.set_preference('signon.autologin.proxy', 'true')
 prof.set_preference('network.proxy.share_proxy_settings', 'false')
@@ -38,17 +46,29 @@ binary = FirefoxBinary('/usr/bin/firefox')
 #driver = webdriver.Firefox(proxy=proxy_config, firefox_profile=prof)
 driver = webdriver.Firefox(firefox_profile=prof)
 
-url= 'http://www120.s.c/'
+url= sys.argv[2] #'http://www120.s.c/'
 driver.get(url)
 time.sleep(5)
 
-table = driver.find_element_by_xpath('//div[@id="tryalso"]/ul/li[1]')
-#table = table.find_element_by_xpath('//ul').find_element_by_xpath('//li')
-table = table.get_attribute('innerHTML')
+try:
+	table = driver.find_element_by_xpath('//div[@id="tryalso"]/ul/li[1]')
+	#table = table.find_element_by_xpath('//ul').find_element_by_xpath('//li')
+	table = table.get_attribute('innerHTML')
 
-print table
+	print table
+	driver.find_element_by_tag_name('body').send_keys(Keys.COMMAND + 'W')
+except:
+	import traceback; traceback.print_exc()
+	pass
+'''
+num_of_tabs = ...
+for x in range(1, num_of_tabs):
+    self.driver.find_element_by_tag_name('body').send_keys(Keys.COMMAND + 'W') #send ^+W to close tab
+'''
 
-driver.close()
+driver.quit()
+
+display.stop()
 
 '''
 driver.get('http://www1.nyse.com/about/listed/IPO_Index.html')
