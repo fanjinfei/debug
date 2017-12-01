@@ -1,3 +1,6 @@
+
+#copy geckodriver to $PATH
+
 from pandas.io.html import read_html
 from selenium import webdriver
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
