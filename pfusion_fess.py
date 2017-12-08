@@ -94,6 +94,17 @@ class stc_fusion():
     def test(self): #test new APIs
         print self.fu.get_datasource('uten_otherse', '').get_config()['properties']['startLinks']
 
+    def get_index_pipeline_list(self):
+	pl = self.fu.get_index_pipeline('') #do not know yet
+	#print pl.get_list()
+        plist = pl.get_list()
+        for pipe in plist:
+            if pipe['id'] == 'conn_solr':
+                stage = pipe['stages'][12] #13 rules
+                print stage['type']
+                print stage['script']
+        print [p['id'] for p in plist]
+
     def ds_hosts(self):
 	for ds_name in daily_cron:
             ds = self.fu.get_datasource(ds_name)
@@ -176,7 +187,8 @@ def main():
     sf = stc_fusion(fu)
 
     #sf.hist()
-    sf.ds_hosts()
+    #sf.ds_hosts()
+    sf.get_index_pipeline_list()
     #sf.test()
 
 if __name__ == '__main__':
