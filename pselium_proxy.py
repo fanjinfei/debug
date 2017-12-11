@@ -202,6 +202,10 @@ def use_chrome():
 	co = Options()
 	co.add_argument("--start-maximized")
 	co.add_extension(pluginfile) #this does not work with co.add_argument("--headless")
+	# OR USE this for headless: node proxy-login-automator.js -local_port 8081 -remote_host REAL_PROXY_IP -remote_port 8080 -usr USR -pwd PWD
+	#co.add_argument("--headless")
+	#co.add_argument("--proxy-server=127.0.0.1:8081")
+
 
 	display = Display(visible=0, size=(800, 600))
 	display.start()
