@@ -201,6 +201,10 @@ def use_chrome():
 
 	co = Options()
 	co.add_argument("--start-maximized")
+
+	#you can manually install the plugin into this custom profile; then no need to install it in Py
+	co.add_argument("--user-data-dir=/home/jffan/src/data/chrome") #custom profile to speed up startup and cache
+
 	co.add_extension(pluginfile) #this does not work with co.add_argument("--headless")
 	# OR USE this for headless: node proxy-login-automator.js -local_port 8081 -remote_host REAL_PROXY_IP -remote_port 8080 -usr USR -pwd PWD
 	#co.add_argument("--headless")

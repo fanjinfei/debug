@@ -27,7 +27,7 @@ def photo():
 @app.route('/favicon.ico')
 def favicon():
     print ('hi fav')
-    return send_from_directory('static',
+    return send_from_directory('/home/jffan/src/debug/static/',
                                'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 if __name__ == "__main__":

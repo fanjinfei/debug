@@ -186,9 +186,9 @@ def main():
     fu = Fusion(requester = fu_requester)
     sf = stc_fusion(fu)
 
-    #sf.hist()
+    sf.hist()
     #sf.ds_hosts()
-    sf.get_index_pipeline_list()
+    #sf.get_index_pipeline_list()
     #sf.test()
 
 if __name__ == '__main__':
