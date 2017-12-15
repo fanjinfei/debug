@@ -226,6 +226,34 @@ def use_chrome():
 	driver.quit()
 	display.stop()
 
+def dump_dom_tree(driver):
+	from StringIO import StringIO
+	import lxml.etree
+
+	parser = lxml.etree.HTMLParser()
+
+	driver.get("http://google.com")
+
+	# We get this element only for the sake of illustration, for the tests later.
+	input_from_find = driver.find_element_by_id("lst-ib")
+	input_from_find.send_keys("foo")
+
+	html = driver.execute_script("return document.documentElement.outerHTML")
+	tree = lxml.etree.parse(StringIO(html), parser)
+
+	# Find our element in the tree.
+	field = tree.find("//*[@id='lst-ib']")
+	# Get the XPath that will uniquely select it.
+	path = tree.getpath(field)
+
+	# Use the XPath to get the element from the browser.
+	input_from_xpath = driver.find_element_by_xpath(path)
+
+	print "Equal?", input_from_xpath == input_from_find
+	# In JavaScript we would not call ``getAttribute`` but Selenium treats
+	# a query on the ``value`` attribute as special, so this works.
+	print "Value:", input_from_xpath.get_attribute("value")
+
 
 '''
 element = driver.wait.until(
