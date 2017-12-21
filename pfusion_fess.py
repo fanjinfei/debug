@@ -94,10 +94,29 @@ class stc_fusion():
     def test(self): #test new APIs
         print self.fu.get_datasource('uten_otherse', '').get_config()['properties']['startLinks']
 
+    def export_index_stage(self, name, seq, stage):
+        fname = '/tmp/'+ name + '-' + '{0:02d}'.format(seq) + '-' + stage['label'] + '.json'
+        with open(fname, 'wb') as f:
+            if stage.get('script', None):
+                js = stage.pop('script')
+                stage['script'] = '...'
+                fname2 = fname[:-5] + '-' + stage['label'] + '.js'
+                with open(fname2, 'wb') as f2:
+                    f2.write(js.encode('utf-8'))
+            f.write(json.dumps(stage))
+
     def get_index_pipeline_list(self):
 	pl = self.fu.get_index_pipeline('') #do not know yet
 	#print pl.get_list()
         plist = pl.get_list()
+        for pipe in plist:
+            if pipe['id'] == 'clsconnsolr':
+                ip_count = 0
+                for stage in pipe['stages']:
+                    self.export_index_stage(pipe['id'], ip_count, stage)
+                    ip_count += 1
+        return
+
         for pipe in plist:
             if pipe['id'] == 'conn_solr':
                 stage = pipe['stages'][12] #13 rules
@@ -186,9 +205,9 @@ def main():
     fu = Fusion(requester = fu_requester)
     sf = stc_fusion(fu)
 
-    sf.hist()
+    #sf.hist()
     #sf.ds_hosts()
-    #sf.get_index_pipeline_list()
+    sf.get_index_pipeline_list()
     #sf.test()
 
 if __name__ == '__main__':
