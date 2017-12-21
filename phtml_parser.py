@@ -1,6 +1,9 @@
 from bs4 import BeautifulSoup as mparser
 from bs4.element import Comment
 import sys
+import re
+import logging
+import yaml
 
 def filter_stopindex(content):
     stop = '<!--stopindex-->'
@@ -51,9 +54,51 @@ def text_from_html(body):
     visible_texts = filter(tag_visible, texts)  
     return u" ".join(t.strip() for t in visible_texts)
 
+def link_filter(url):
+    m = re.compile('^http://www\.statcan\.gc\.ca/eng/survey/.*', re.I)
+    return True if m.match(url) else False
+
+def links(s):
+    for link in s.find_all('a', href=True):
+        url = link['href']
+        if url[:4] != 'http': url = 'http://www.statcan.gc.ca' + url
+        if link_filter(url):
+            print url
+
+class Doc():
+    def __init__(self, content): #to get default host url
+        self.s = mparser(filter_stopindex(content), "lxml")
+        self.last_modified = None
+        self.title = None
+        self.content = None
+        self.last_crawled = None
+        self.author = None
+        self.format = None
+        self.language = None
+        self.content_length = 0
+        self.encoding = None
+    def process(self):
+	dt = self.s.find(id="wb-dtmd")
+        if dt: self.last_modified = dt.find(name='time').text
+    def links(self):
+        pass
+
+def read_config(filename):
+    with open(filename) as f:
+    # use safe_load instead load
+        return yaml.safe_load(f)
+
 def main():
+     logging.basicConfig(format='%(asctime)s %(message)s',
+                         filename='/tmp/myapp.log', level=logging.DEBUG) #INFO
+
      f = open(sys.argv[1])
+     print read_config(sys.argv[2])
      c = f.read()
+     doc = Doc(c)
+     doc.process()
+     logging.info('doc last modified: '+ doc.last_modified)
+
      c = filter_stopindex(c)
 
      s = mparser(c, "lxml")
@@ -65,7 +110,8 @@ def main():
      for p in s.find(name='div', attrs={'class':'pane-bean-report-problem-button'}).findChildren():
          dts.append(p)
 
-     print get_text(s, dts)
+     #print get_text(s, dts)
+     links(s)
      print 'dbg', dt.text, dt.contents
      print dt.findChildren()
      return
