@@ -110,7 +110,8 @@ class stc_fusion():
 	#print pl.get_list()
         plist = pl.get_list()
         for pipe in plist:
-            if pipe['id'] == 'clsconnsolr':
+            if pipe['id'] == 'conn_solr_cansim':
+            #if pipe['id'] == 'clsconnsolr':
                 ip_count = 0
                 for stage in pipe['stages']:
                     self.export_index_stage(pipe['id'], ip_count, stage)
@@ -205,9 +206,9 @@ def main():
     fu = Fusion(requester = fu_requester)
     sf = stc_fusion(fu)
 
-    #sf.hist()
+    sf.hist()
     #sf.ds_hosts()
-    sf.get_index_pipeline_list()
+    #sf.get_index_pipeline_list()
     #sf.test()
 
 if __name__ == '__main__':

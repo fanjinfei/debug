@@ -1,0 +1,31 @@
+# tree format
+- ndm_isp_en:
+    name: ndm module isp english
+    lang: en
+    output_file: /tmp/ms_ispe.csv
+    start_links:
+      - http://www.statcan.gc.ca/eng/survey/index
+      - http://www.statcan.gc.ca/eng/survey/list
+    depth: 1
+    include_patterns:
+      - ^http://www\.statcan\.gc\.ca/eng/survey/.*
+    exclude_patterns:
+      - .*MM=1.*
+      - .*HPA=1.*
+      - http://www\.statcan\.gc\.ca/eng/survey/alphabet-list
+      - http://www\.statcan\.gc\.ca/fra/enquete/*
+
+- ndm_isp_fr:
+    name: ndm module isp french
+    lang: fr
+    output_file: /tmp/ms_ispf.csv
+    start_links:
+      - http://www.statcan.gc.ca/fra/enquete/index
+      - http://www.statcan.gc.ca/fra/enquete/liste
+    depth: 1
+    include_patterns:
+      - http://www\.statcan\.gc\.ca/fra/enquete/.*
+    exclude_patterns:
+      - .*\?MM=.*
+      - .*/eng/.*
+
