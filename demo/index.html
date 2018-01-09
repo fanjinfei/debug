@@ -1,25 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <title>search</title>
-<link href="/css/style-base.css" rel="stylesheet"
-	type="text/css" />
-<link href="/css/style.css" rel="stylesheet" type="text/css" />
-<link href="/static/font-awesome.min.css" rel="stylesheet"
-	type="text/css" />
+  <link rel="stylesheet" href="/css/theme.min.css">
+  <!--<![endif]-->
+  <link rel="stylesheet" href="/css/browse.css">
+ 
 </head>
-<body class="search">
+
+<body class="statcan-bootstrap theme-gcweb html not-front not-logged-in no-sidebars page-node page-node- page-node-12399 node-type-statcan-basic-page i18n-en">
+
+{% include 'header.html' %}
+
+<div id="content" class="container">
 <form action="{{ url_for('search', lang_code=locale) }}" id="searchForm" method='get'>
-  <nav class="navbar navbar-dark bg-inverse navbar-fixed-top">
-  <div class="search-box navbar-form col-lg-5 col-md-6 col-sm-6 col-xs-8"
-			role="search">
+  <div id="searchInput" class="input-group col-md-12">
     <p> {{ _('search') }}
     <input name='q' size=30 id="query" class="form-control" autocomplete="off">
-  </div></nav>
+  </div>
 </form>
 <p>
 
-<div id="content" class="container">
 {% if res %}
   <div class="row"> <div class="col-md-12">
   <br>
@@ -32,6 +34,7 @@
     {{i+1}}: <a href="{{item.url}}">{{ item.title }}</a> <br>
     {{ item.content_description| safe }}<br>
     crawled:{{ item.created[:10] }} page modified: {{ item.last_modified }} <br>
+    <hr class="drk-grey" style="display: block;">
   </div>
   {% endfor %}
 {% endif %}
@@ -72,5 +75,8 @@ $(function () {
     });
 });
 </script>
+<script src="/static/wet-boew.min.js"></script>
+<script src="/static/browse.js"></script>
+  
 </body>
 </html>
