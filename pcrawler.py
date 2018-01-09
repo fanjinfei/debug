@@ -14,31 +14,11 @@ import traceback
 import time
 from datetime import datetime
 
-
-#import eventlet
-#eventlet.monkey_patch()
-
-#with eventlet.Timeout(10):
-#    requests.get("http://ipv4.download.thinkbroadband.com/1GB.zip", verify=False)
-
-'''
-import httplib
-def patch_http_response_read(func):
-    def inner(*args):
-        try:
-            return func(*args)
-        except httplib.IncompleteRead, e:
-            return e.partial
-    return inner
-
-httplib.HTTPResponse.read = patch_http_response_read(httplib.HTTPResponse.read)
-'''
-
 def get_web_html(url):
     user_agent = {'User-agent': 'statcan dev crawler; abuse report'}
     res = requests.get(url=url, headers=user_agent, timeout=10)
     if r.status_code == requests.codes.ok:
-        return res.text #, res.status_code
+        return res.text
     else:
         return None
 
@@ -95,23 +75,6 @@ def get_text(m, dts):
             visible_texts.append(ele)
     return u" ".join(t.strip() for t in visible_texts)
 
-def text_from_html(body):
-    soup = BeautifulSoup(body, 'html.parser')
-    texts = soup.findAll(text=True)
-    visible_texts = filter(tag_visible, texts)  
-    return u" ".join(t.strip() for t in visible_texts)
-
-def link_filter(url):
-    m = re.compile('^http://www\.statcan\.gc\.ca/eng/survey/.*', re.I)
-    return True if m.match(url) else False
-
-def links(s):
-    for link in s.find_all('a', href=True):
-        url = link['href']
-        if url[:4] != 'http': url = 'http://www.statcan.gc.ca' + url
-        if link_filter(url):
-            print url
-
 class Doc():
     def __init__(self, url, content, excl_htmls, lang='en'): #to get default host url
         self.s = mparser(filter_stopindex(content), "lxml")
@@ -157,8 +120,6 @@ class Doc():
 
         dts = self.exclude_html_sections(dts)
 
-#        self.content = get_text(self.s, dts).strip().replace(',', ' ')
-#        self.title = self.s.find(name='title').text.replace(',', ' ')
         self.content = get_text(self.s, dts).strip()
         self.title = self.s.find(name='title').text
 
