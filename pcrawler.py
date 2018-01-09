@@ -35,16 +35,12 @@ httplib.HTTPResponse.read = patch_http_response_read(httplib.HTTPResponse.read)
 '''
 
 def get_web_html(url):
-    '''url = '{0}/solr/{1}_shard1_replica1/select?q=_lw_data_source_s%3A{2}&rows=1&wt=json'.format(self.solr_url, collection, datasource)
-        resp = requests.get(url=url)
-        data = json.loads(resp.text)'''
     user_agent = {'User-agent': 'statcan dev crawler; abuse report'}
-    proxies = {'http': 'http://u:p@ip:port/',
-               'https': 'http://u:p@ip:port/'}
-#    with eventlet.Timeout(10):
-#    res = requests.get(url=url, headers=user_agent, proxies=proxies, timeout=10)
-    res = requests.get(url=url, timeout=10)
-    return res.text
+    res = requests.get(url=url, headers=user_agent, timeout=10)
+    if r.status_code == requests.codes.ok:
+        return res.text #, res.status_code
+    else:
+        return None
 
 def write_csv(filename, rows, header=None):
     outf=open(filename, 'wb')
@@ -117,7 +113,7 @@ def links(s):
             print url
 
 class Doc():
-    def __init__(self, url, content, lang='en'): #to get default host url
+    def __init__(self, url, content, excl_htmls, lang='en'): #to get default host url
         self.s = mparser(filter_stopindex(content), "lxml")
         self.url = url
         self.last_modified = None
@@ -129,16 +125,37 @@ class Doc():
         self.language = lang #fr
         self.content_length = 0
         self.encoding = 'utf-8'
+        self.excl_htmls = excl_htmls
+
+    def exclude_item(self, nodes, name, attrs, all=True):
+        info = self.s.find(name=name, attrs=attrs)
+        if info:
+            nodes.append(info)
+            if all:
+                for p in rpt_problem.findChildren():
+                    nodes.append(p)
+       
+    def exclude_html_sections(self, nodes):
+        self.exclude_item(nodes, 'div', {'class':'pane-bean-report-problem-button'})
+        self.exclude_item(nodes, 'a', {'href':'https://www.canada.ca/en/report-problem.html'}, False)
+        self.exclude_item(nodes, 'a', {'href':'#wb-cont'}, False)
+        self.exclude_item(nodes, 'a', {'href':'#wb-info'}, False)
+
+        for section in self.excl_htmls:
+            node = self.s.find(name=section)
+            if node:
+               for child in node.findChildren():
+                   nodes.append(child)
+        return nodes
 
     def process(self):
 	dt = self.s.find(id="wb-dtmd")
         dts = []
         if dt: #last_modified":"2017-11-27T18:29:13.000Z", this is UTC, will display it -5 for US/Canada east
             self.last_modified = dt.find(name='time').text[:10] + 'T00:00:01.000Z'
-            dts = dt.findChildren() 
-        for p in self.s.find(name='div',
-                             attrs={'class':'pane-bean-report-problem-button'}).findChildren():
-            dts.append(p)
+            dts = dt.findChildren()
+
+        dts = self.exclude_html_sections(dts)
 
 #        self.content = get_text(self.s, dts).strip().replace(',', ' ')
 #        self.title = self.s.find(name='title').text.replace(',', ' ')
@@ -169,6 +186,7 @@ class Crawler():
         self.start_links = data['start_links']
         self.depth = data['depth']
         self.lang = data['lang']
+        self.excl_htmls = data['exclude_html_sections']
         self.incls = data['include_patterns']
         self.excls = data['exclude_patterns']
         self.csv_file = data['output_file']
@@ -177,13 +195,26 @@ class Crawler():
         self.ims = [re.compile(p, re.I) for p in self.incls]
         self.ems = [re.compile(p, re.I) for p in self.excls]
 
+        skip_index_urls = [ '_dot_file', '-dot-', 'dotpage', 'Dot_', 'DOT']
+        self.skip_index_patterns = [re.compile(p, re.I) for p in skip_index_urls]
+        self.do_index = re.compile('Cadotte', re.I)
+
     def link_filter(self, url):
         for m in self.ems:
-            if m.match(url): return False
+            if m.search(url): return False
         for m in self.ims:
-            if m.match(url): return True
+            if m.search(url): return True
         return False
         
+    def index_filter(self, doc):
+        # TODO: follow_link_not_index from yaml
+        url = doc.url
+        if self.do_index.match(url): return True
+
+        for m in self.skip_index_patterns:
+            if m.match(url): return False
+        return True
+
     def process(self):
         urls = {}
         failed_urls = []
@@ -197,12 +228,13 @@ class Crawler():
             urls.pop(url)
 
             print url, len(urls), len(self.handled_urls)
-#            if depth == self.depth: continue
+            if depth == self.depth: continue
 
             count = 5
             while count > 0:
                 try:
                     c = get_web_html(url)
+                    # todo: handle status
                     break
                 except Exception:
                     c = None
@@ -214,10 +246,12 @@ class Crawler():
                 failed_urls.append(url)
                 continue
             c = filter_stopindex(c)
-            doc = Doc(url, c, self.lang)
+            doc = Doc(url, c, self.excl_htmls, self.lang)
             doc.process()
             links = doc.link()
-            data.append(doc.export())
+            if self.index_filter(doc):
+                data.append(doc.export())
+            print '\t\t^', doc.title
 
             time.sleep(2)
 
@@ -238,11 +272,15 @@ def read_config(filename):
 
 def main():
     logging.basicConfig(format='%(asctime)s %(message)s',
-                         filename='/tmp/myapp.log', level=logging.DEBUG) #INFO
+                         filename='/tmp/myapp.log', level=logging.INFO) #INFO, DEBUG
 
     confs = read_config(sys.argv[1])
     for conf in confs:
         for short_name, data in conf.iteritems():
+            if not data.get('enabled', True):
+                continue
+            if short_name[:3] != 'ss_': continue
+            if short_name != 'ss_daily_en': continue
             craw = Crawler(data)
             craw.process()
 
@@ -250,9 +288,10 @@ def main():
     
 def test():
     url = 'http://www.statcan.gc.ca/fra/enquete/entreprise/5220'
+    url = 'http://www.statcan.gc.ca/daily-quotidien/160603/dq160603f-eng.htm'
     c = get_web_html(url)
     c = filter_stopindex(c)
-    doc = Doc(url, c)
+    doc = Doc(url, c, ['header', 'footer'])
     doc.process()
     doc.debug()
 
@@ -264,6 +303,7 @@ def test():
     return
 
 main()
+#test()
 
 '''
 directories=/opt/es/demo/raw_data/module_isp

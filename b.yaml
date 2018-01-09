@@ -1,4 +1,77 @@
-# tree format
+# tree format, ss:site search
+- ss_daily_en:
+    name: site search daily english
+    lang: en
+    output_file: /tmp/ss_dailye.csv
+    start_links:
+      - http://www.statcan.gc.ca/cgi-bin/DAILY/dot-eng.pl
+      - http://www120.statcan.gc.ca/dotpages/utsdailyf-dot-eng.html
+    exclude_html_sections:
+      - header
+      - footer
+    depth: 1
+    follow_link_not_index:
+      - 'http://www\.statcan\.gc\.gc/(?:daily-quotidien/.*/tdq|cgi-bin/).*'
+    include_patterns:
+      - http://www5\.statcan\.gc\.ca/searchdaily/searchdaily.*
+      - http://f7webappsb1\.statcan\.gc\.ca/searchdaily/searchdaily\.*
+      - http://www120\.statcan\.gc\.ca/dotpages/utsdaily(e|f)-dot-(eng|fra)\.html
+      - http://www\.statcan\.gc\.ca/cgi-bin/DAILY/.*
+      - http://(www|www120)\.statcan\.gc\.ca/daily-quotidien/.*
+    exclude_patterns:
+      - .*/rd.*\.htm
+      - .*copy.*
+      - .*-fra\.htm
+      - .*xd.*\.htm
+      - .*zd.*\.htm
+      - .*zq.*\.htm
+      - http://www\.statcan\.gc\.ca/daily-quotidien/.*/ah.*\.htm.*
+      - http://www\.statcan\.gc\.ca/daily-quotidien/.*/be.*\.htm.*
+      - http://www\.statcan\.gc\.ca/daily-quotidien/.*/cg.*\.htm.*
+      - http://www\.statcan\.gc\.ca/daily-quotidien/.*/f.*\.htm.*
+      - http://www\.statcan\.gc\.ca/daily-quotidien/.*/pn.*\.htm.*
+      - http://www\.statcan\.gc\.ca/daily-quotidien/.*/rd.*\.htm.*
+      - http://www\.statcan\.gc\.ca/daily-quotidien/.*/s.*\.htm.*
+      - http://www\.statcan\.gc\.ca/daily-quotidien/today/.*
+      - .*files_to_update.*
+      - .*driver_daily_update.*
+- ss_daily_fr:
+    name: site search daily french
+    lang: fr
+    output_file: /tmp/ss_dailyf.csv
+    start_links:
+      - http://www.statcan.gc.ca/cgi-bin/DAILY/dot-fra.pl
+      - http://www120.statcan.gc.ca/dotpages/utsdailyf-dot-fra.html
+    exclude_html_sections:
+      - header
+      - footer
+    depth: 1
+    include_patterns:
+      - http://www120\.statcan\.gc\.ca/dotpages/utsdaily(e|f)-dot-(eng|fra)\.html
+      - http://www\.statcan\.gc\.ca/cgi-bin/DAILY/.*
+      - http://(www|www120)\.statcan\.gc\.ca/daily-quotidien/.*
+    exclude_patterns:
+      - http://www\.statcan\.gc\.ca/daily-quotidien/.*/ah.*\.htm.*
+      - http://www\.statcan\.gc\.ca/daily-quotidien/.*/be.*\.htm.*
+      - http://www\.statcan\.gc\.ca/daily-quotidien/.*/cg.*\.htm.*
+      - http://www\.statcan\.gc\.ca/daily-quotidien/.*/f.*\.htm.*
+      - http://www\.statcan\.gc\.ca/daily-quotidien/.*/pn.*\.htm.*
+      - http://www\.statcan\.gc\.ca/daily-quotidien/.*/rd.*\.htm.*
+      - http://www\.statcan\.gc\.ca/daily-quotidien/.*/s.*\.htm.*
+      - http://www\.statcan\.gc\.ca/daily-quotidien/today/.*
+      - .*/rd.*\.htm
+      - .*copy.*
+      - .*-eng.htm
+      - .*xd.*\.htm
+      - .*zd.*\.htm
+      - .*zq.*\.htm
+      - .*files_to_update.*
+      - .*driver_daily_update.*
+- ss_daily_latest_fr:
+    enabled: False
+    start_links:
+      - http://www120.statcan.gc.ca/dotpages/dot_dailylf.html
+      - http://www5.statcan.gc.ca/searchdaily/searchdaily?create_dot_file_please=1&lang=fra
 - ndm_isp_en:
     name: ndm module isp english
     lang: en
