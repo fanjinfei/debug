@@ -3,6 +3,7 @@ from flask import Flask, request
 from flask import render_template, redirect, g, url_for, abort
 from flask import send_from_directory
 from flask.ext.babel import Babel
+from flask_paginate import Pagination, get_page_parameter
 import requests
 import json
 import sys
@@ -50,8 +51,10 @@ def static_page(page_name):
 def css_page(page_name):
     return _send_static(page_name)
 
-def _get_search(q):
-    url = ''.join([base_url, 'q=', q, '&num=20'])
+def _get_search(q, start_page=1, page_size=20):
+    start = (start_page-1)*page_size +1
+    url = ''.join([base_url, 'q=', q, '&start={0}&num={1}'.format(start,page_size)])
+    print (url)
     user_agent = {'User-agent': 'statcan search'}
     r = requests.get(url=url, headers=user_agent, timeout=10)
     if r.status_code == requests.codes.ok:
@@ -74,13 +77,25 @@ def suggest():
 @app.route("/<lang_code>/search", methods=['GET'])
 def search():
     qval = request.args.get('q')
+    page = request.args.get('page', 1, type=int)
     print (qval, request.get_json(), request.data, request.args)
     res = None
     if qval:
-        res = _get_search(qval)
+        res = _get_search(qval, page)
         if res:
             res = json.loads(res)['response']
-    return render_template('index.html', res=res, locale=get_locale())
+            total, per_page = res['record_count'], 20
+            href=''.join(['/en/search?q=',qval,
+                           '&num=20&page={0}'])
+            pagination = Pagination(page=page, per_page=per_page,
+                                    href = href, bs_version=4,
+                                    total=total, record_name='users')
+    return render_template('index.html', res=res, locale=get_locale(),
+                           pagination=pagination)
+
+@app.route('/favicon.ico')
+def favicon():
+    return redirect('/static/favicon.ico')
 
 def test():
     r = json.loads(_get_search('price'))
