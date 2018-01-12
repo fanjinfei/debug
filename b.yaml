@@ -72,6 +72,33 @@
     start_links:
       - http://www120.statcan.gc.ca/dotpages/dot_dailylf.html
       - http://www5.statcan.gc.ca/searchdaily/searchdaily?create_dot_file_please=1&lang=fra
+
+- ndm_navigation_en:
+    name: ndm navigation english
+    lang: en
+    output_file: /tmp/ndm_nav_e.csv
+    start_links:
+      - https://f7searchprodz1.stcpaz.statcan.gc.ca/dotpages/ndm_dot_navpages2_en.html
+      - https://www150.statcan.gc.ca/n1/en/subjects
+    depth: 1
+    include_html_sections:
+      - h1: { "id": "wb-cont", "class": "page-header" }
+    include_patterns:
+      - .*www150\.statcan\.gc\.ca/.*
+    exclude_patterns:
+      - .*statcan\.gc\.ca/cgi-bin/COMMENTS.*
+      - .*statcan\.gc\.ca/eng/reference/important-notic.*
+      - .*pm\.gc\.ca/.*
+      - .*statcan\.gc\.ca/eng/reference/privac.*
+      - .*www150\.statcan\.gc\.ca/n1/en$
+      - .*www150\.statcan\.gc\.ca/n1/en/hel.*
+      - .*www150\.statcan\.gc\.ca/n1/en/surveys/.*
+      - .*\.canada\.ca/.*
+      - .*statcan.gc.ca/eng/reference/refcentre/index.*
+      - .*statcan.gc.ca/stcsr/fr/.*
+      - .*statcan.gc.ca/stcsr/en/.*
+      - .*www150\.statcan\.gc\.ca/n1/en/a2.*
+      - .*www150\.statcan\.gc\.ca/n1/fr/.*
 - ndm_isp_en:
     name: ndm module isp english
     lang: en

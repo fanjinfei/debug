@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup as mparser
 from bs4.element import Comment
+from urlparse import urlparse
 import sys
 import re
 import requests
@@ -14,10 +15,11 @@ import traceback
 import time
 from datetime import datetime
 
+#export PYTHONWARNINGS="ignore:Unverified HTTPS request"
 def get_web_html(url):
     user_agent = {'User-agent': 'statcan dev crawler; abuse report'}
-    res = requests.get(url=url, headers=user_agent, timeout=10)
-    if r.status_code == requests.codes.ok:
+    res = requests.get(url=url, headers=user_agent, verify=False, timeout=10)
+    if res.status_code == requests.codes.ok:
         return res.text
     else:
         return None
@@ -75,8 +77,20 @@ def get_text(m, dts):
             visible_texts.append(ele)
     return u" ".join(t.strip() for t in visible_texts)
 
+def get_inc_text(m, dts):
+    visible_texts =[]
+    for section in dts:
+        for name, attrs in section.items():
+            break
+        info = m.find(name=name, attrs=attrs)
+        if not info: continue
+        texts = info.findAll(text=True)
+        for ele in texts:
+            visible_texts.append(ele)
+    return u" ".join(t.strip() for t in visible_texts)
+
 class Doc():
-    def __init__(self, url, content, excl_htmls, lang='en'): #to get default host url
+    def __init__(self, url, content, excl_htmls, incl_htmls, lang='en'): #to get default host url
         self.s = mparser(filter_stopindex(content), "lxml")
         self.url = url
         self.last_modified = None
@@ -89,8 +103,14 @@ class Doc():
         self.content_length = 0
         self.encoding = 'utf-8'
         self.excl_htmls = excl_htmls
+        self.incl_htmls = incl_htmls
+        self.prefix = urlparse(url).hostname
+        if url[:5] == 'https':
+            self.prefix = 'https://' + self.prefix
+        else:
+            self.prefix = 'http://' + self.prefix
 
-    def exclude_item(self, nodes, name, attrs, all=True):
+    def html_item(self, nodes, name, attrs, all=True):
         info = self.s.find(name=name, attrs=attrs)
         if info:
             nodes.append(info)
@@ -98,13 +118,14 @@ class Doc():
                 for p in rpt_problem.findChildren():
                     nodes.append(p)
        
-    def exclude_html_sections(self, nodes):
-        self.exclude_item(nodes, 'div', {'class':'pane-bean-report-problem-button'})
-        self.exclude_item(nodes, 'a', {'href':'https://www.canada.ca/en/report-problem.html'}, False)
-        self.exclude_item(nodes, 'a', {'href':'#wb-cont'}, False)
-        self.exclude_item(nodes, 'a', {'href':'#wb-info'}, False)
+    def html_sections(self, nodes, sections, exclude = True):
+        if exclude:
+            self.html_item(nodes, 'div', {'class':'pane-bean-report-problem-button'})
+            self.html_item(nodes, 'a', {'href':'https://www.canada.ca/en/report-problem.html'}, False)
+            self.html_item(nodes, 'a', {'href':'#wb-cont'}, False)
+            self.html_item(nodes, 'a', {'href':'#wb-info'}, False)
 
-        for section in self.excl_htmls:
+        for section in sections or []:
             node = self.s.find(name=section)
             if node:
                for child in node.findChildren():
@@ -118,15 +139,20 @@ class Doc():
             self.last_modified = dt.find(name='time').text[:10] + 'T00:00:01.000Z'
             dts = dt.findChildren()
 
-        dts = self.exclude_html_sections(dts)
+        dts = self.html_sections(dts, self.excl_htmls)
 
-        self.content = get_text(self.s, dts).strip()
-        self.title = self.s.find(name='title').text
+        if not self.incl_htmls:
+            self.content = get_text(self.s, dts).strip()
+        else:
+            self.content = get_inc_text(self.s, self.incl_htmls).strip()
+        title = self.s.find(name='title')
+        self.title = title.text if title else None
 
         self.links = []
         for link in self.s.find_all('a', href=True):
             url = link['href']
-            if url[:4] != 'http': url = 'http://www.statcan.gc.ca' + url.strip()
+            if url[0] == '#': continue
+            if url[:4] != 'http': url = self.prefix  + url.strip()
             self.links.append(url.strip())
 
     def link(self):
@@ -147,33 +173,37 @@ class Crawler():
         self.start_links = data['start_links']
         self.depth = data['depth']
         self.lang = data['lang']
-        self.excl_htmls = data['exclude_html_sections']
+        self.excl_htmls = data.get('exclude_html_sections', None)
+        self.incl_htmls = data.get('include_html_sections', None)
         self.incls = data['include_patterns']
         self.excls = data['exclude_patterns']
         self.csv_file = data['output_file']
         self.handled_urls = {}
 
-        self.ims = [re.compile(p, re.I) for p in self.incls]
-        self.ems = [re.compile(p, re.I) for p in self.excls]
+        self.ims = dict( (p,re.compile(p, re.I)) for p in self.incls)
+        self.ems = dict((p,re.compile(p, re.I)) for p in self.excls)
 
         skip_index_urls = [ '_dot_file', '-dot-', 'dotpage', 'Dot_', 'DOT']
         self.skip_index_patterns = [re.compile(p, re.I) for p in skip_index_urls]
         self.do_index = re.compile('Cadotte', re.I)
 
     def link_filter(self, url):
-        for m in self.ems:
-            if m.search(url): return False
-        for m in self.ims:
+        for p, m in self.ems.items():
+            if m.match(url):
+                #print 'exlcude 1:', p, url
+                return False
+        for p,m in self.ims.items():
             if m.search(url): return True
+        #print 'exlcude 2:', url
         return False
         
     def index_filter(self, doc):
         # TODO: follow_link_not_index from yaml
         url = doc.url
-        if self.do_index.match(url): return True
+        if self.do_index.search(url): return True
 
         for m in self.skip_index_patterns:
-            if m.match(url): return False
+            if m.search(url): return False
         return True
 
     def process(self):
@@ -207,12 +237,13 @@ class Crawler():
                 failed_urls.append(url)
                 continue
             c = filter_stopindex(c)
-            doc = Doc(url, c, self.excl_htmls, self.lang)
+            doc = Doc(url, c, self.excl_htmls, self.incl_htmls, self.lang)
             doc.process()
             links = doc.link()
             if self.index_filter(doc):
                 data.append(doc.export())
             print '\t\t^', doc.title
+            #todo: if not content: log warning
 
             time.sleep(2)
 
@@ -240,8 +271,8 @@ def main():
         for short_name, data in conf.iteritems():
             if not data.get('enabled', True):
                 continue
-            if short_name[:3] != 'ss_': continue
-            if short_name != 'ss_daily_en': continue
+            #if short_name[:3] != 'ss_': continue
+            if short_name != 'ndm_navigation_en': continue
             craw = Crawler(data)
             craw.process()
 
@@ -250,9 +281,10 @@ def main():
 def test():
     url = 'http://www.statcan.gc.ca/fra/enquete/entreprise/5220'
     url = 'http://www.statcan.gc.ca/daily-quotidien/160603/dq160603f-eng.htm'
+    url = 'https://www150.statcan.gc.ca/n1/en/subjects'
     c = get_web_html(url)
     c = filter_stopindex(c)
-    doc = Doc(url, c, ['header', 'footer'])
+    doc = Doc(url, c, ['header', 'footer'], [{'h1': { "id": "wb-cont", "class": "page-header" }}] )
     doc.process()
     doc.debug()
 
