@@ -115,7 +115,7 @@ class Doc():
         if info:
             nodes.append(info)
             if all:
-                for p in rpt_problem.findChildren():
+                for p in info.findChildren():
                     nodes.append(p)
        
     def html_sections(self, nodes, sections, exclude = True):
@@ -218,8 +218,8 @@ class Crawler():
             self.handled_urls[url] = True
             urls.pop(url)
 
-            print url, len(urls), len(self.handled_urls)
-            if depth == self.depth: continue
+#            print url, len(urls), len(self.handled_urls)
+#            if depth == self.depth: continue
 
             count = 5
             while count > 0:
@@ -228,13 +228,14 @@ class Crawler():
                     # todo: handle status
                     break
                 except Exception:
+                #ChunkedEncodingError, ReadTimeout, ConnectionError
                     c = None
                     count = count - 1
-                    print "error:", url
-                    print (traceback.format_exc())
+                    #print (traceback.format_exc())
                     time.sleep(5)
             if not c:
                 failed_urls.append(url)
+                print "failed:", url
                 continue
             c = filter_stopindex(c)
             doc = Doc(url, c, self.excl_htmls, self.incl_htmls, self.lang)
@@ -271,8 +272,8 @@ def main():
         for short_name, data in conf.iteritems():
             if not data.get('enabled', True):
                 continue
-            #if short_name[:3] != 'ss_': continue
-            if short_name != 'ndm_navigation_en': continue
+            if short_name[:7] != 'ndm_isp': continue
+            #if short_name != 'ndm_navigation_en': continue
             craw = Crawler(data)
             craw.process()
 
