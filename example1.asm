@@ -15,3 +15,8 @@ _start:
 section .data
 msg:	db	"Hello, world!", 10
 .len:	equ	$ - msg
+
+;nasm example1.asm  -f elf64
+;ld example1.o -o t1
+
+;for AT&T syntax, use #as (gas GUN as)
