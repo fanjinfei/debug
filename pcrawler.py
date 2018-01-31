@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup as mparser
 from bs4.element import Comment
 from urlparse import urlparse
+from HTMLParser import HTMLParser
 import sys
 import re
 import requests
@@ -16,11 +17,26 @@ import time
 from datetime import datetime
 
 #export PYTHONWARNINGS="ignore:Unverified HTTPS request"
-def get_web_html(url):
-    user_agent = {'User-agent': 'statcan dev crawler; abuse report'}
-    res = requests.get(url=url, headers=user_agent, verify=False, timeout=10)
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+def get_web_html(s, url):
+    user_agent = {'User-agent': 'statcan dev crawler; abuse report jinfei.fan@canada.ca'}
+    if not s:
+        res = requests.get(url=url, headers=user_agent, verify=False, timeout=10)
+    else:
+        res = s.get(url=url, headers=user_agent, verify=False, timeout=10)
     if res.status_code == requests.codes.ok:
-        return res.text
+        rtext = []
+        if res.encoding is None:
+            res.encoding = 'utf-8'
+        #for line in res.iter_lines(decode_unicode=True):
+        for line in res.iter_lines():
+            # filter out keep-alive new lines
+            if line:
+                decoded_line = line.decode('utf-8', errors='ignore')
+                rtext.append(decoded_line)
+        return u'\n'.join(rtext)
     else:
         return None
 
@@ -91,7 +107,8 @@ def get_inc_text(m, dts):
 
 class Doc():
     def __init__(self, url, content, excl_htmls, incl_htmls, lang='en'): #to get default host url
-        self.s = mparser(filter_stopindex(content), "lxml")
+        #self.s = mparser(filter_stopindex(content), "lxml")
+        self.s = mparser(filter_stopindex(content), "html.parser")
         self.url = url
         self.last_modified = None
         self.title = None
@@ -132,11 +149,32 @@ class Doc():
                    nodes.append(child)
         return nodes
 
+    def verify_date(self, s): #some hack
+        try:
+            r = s.replace('*', '0').replace(' ', '-')
+            datetime.strptime(r, "%Y-%m-%dT%H:%M:%S.%fZ")
+            return r
+        except:
+            return None
+
     def process(self):
 	dt = self.s.find(id="wb-dtmd")
+        if not dt:
+            dt = self.s.find(id="gcwu-date-mod")
+
         dts = []
         if dt: #last_modified":"2017-11-27T18:29:13.000Z", this is UTC, will display it -5 for US/Canada east
-            self.last_modified = dt.find(name='time').text[:10] + 'T00:00:01.000Z'
+            dtext = dt.find(name='time').text.strip()
+            self.last_modified = dt.find(name='time').text.strip()[:10] + 'T00:00:01.000Z'
+            self.last_modified = self.verify_date(self.last_modified)
+            if not self.last_modified:
+                try:
+                    y,m,d = [ int(i) for i in dtext.split('-')[:3]]
+                    self.last_modified = "{0}-{1:02d}-{2:02d}".format(y,m,d) + 'T00:00:01.000Z'
+                except:
+                    print 'error last modified', self.url
+                    print (traceback.format_exc())
+                    self.last_modified = '2015-12-17T00:00:01.000Z'
             dts = dt.findChildren()
 
         dts = self.html_sections(dts, self.excl_htmls)
@@ -147,12 +185,20 @@ class Doc():
             self.content = get_inc_text(self.s, self.incl_htmls).strip()
         title = self.s.find(name='title')
         self.title = title.text if title else None
+        self.title = self.title.replace('\n', ' ') 
+        self.title = self.title.replace('\t', ' ') 
+        self.content = self.content.replace('\n', ' ')
+        self.content = self.content.replace('\t', ' ')
+        self.content = self.content.replace('\r', ' ')
 
         self.links = []
         for link in self.s.find_all('a', href=True):
             url = link['href']
             if url[0] == '#': continue
             if url[:4] != 'http': url = self.prefix  + url.strip()
+            id_same = url.rfind('#')
+            if id_same != -1: #chop it
+                url = url[:id_same]
             self.links.append(url.strip())
 
     def link(self):
@@ -162,8 +208,11 @@ class Doc():
         return['url', 'title', 'content', 'lastmodified', 'format', 'lang', 'timestamp', 'encoding']
 
     def export(self):
-        return [self.url, self.title, self.content, self.last_modified, 
+        hp = HTMLParser()
+        res = [self.url, hp.unescape(self.title), hp.unescape(self.content),
+                self.last_modified, 
                 self.format, self.language, self.last_crawled, self.encoding]
+        return [ item.replace('\t', ' ').replace('\r', ' ').replace('\d', ' ') for item in res]
 
     def debug(self):
         print '\n'.join(self.export())
@@ -171,7 +220,7 @@ class Doc():
 class Crawler():
     def __init__(self, data):
         self.start_links = data['start_links']
-        self.depth = data['depth']
+        self.depth = data['depth'] if data['depth'] != -1 else 1000000
         self.lang = data['lang']
         self.excl_htmls = data.get('exclude_html_sections', None)
         self.incl_htmls = data.get('include_html_sections', None)
@@ -186,6 +235,14 @@ class Crawler():
         skip_index_urls = [ '_dot_file', '-dot-', 'dotpage', 'Dot_', 'DOT']
         self.skip_index_patterns = [re.compile(p, re.I) for p in skip_index_urls]
         self.do_index = re.compile('Cadotte', re.I)
+
+        self.sessions = {}
+
+    def get_session(self, url):
+        host = urlparse(url).hostname
+        if not self.sessions.get(host, None):
+            self.sessions[host] = requests.Session()
+        return self.sessions[host]
 
     def link_filter(self, url):
         for p, m in self.ems.items():
@@ -218,20 +275,20 @@ class Crawler():
             self.handled_urls[url] = True
             urls.pop(url)
 
-#            print url, len(urls), len(self.handled_urls)
+            print url, len(urls), len(self.handled_urls)
 #            if depth == self.depth: continue
 
             count = 5
             while count > 0:
                 try:
-                    c = get_web_html(url)
+                    c = get_web_html(self.get_session(url), url)
                     # todo: handle status
                     break
                 except Exception:
                 #ChunkedEncodingError, ReadTimeout, ConnectionError
                     c = None
                     count = count - 1
-                    #print (traceback.format_exc())
+                    print (traceback.format_exc())
                     time.sleep(5)
             if not c:
                 failed_urls.append(url)
@@ -246,7 +303,7 @@ class Crawler():
             print '\t\t^', doc.title
             #todo: if not content: log warning
 
-            time.sleep(2)
+            #time.sleep(2)
 
             if depth == self.depth: continue
             for link in links:
@@ -272,7 +329,7 @@ def main():
         for short_name, data in conf.iteritems():
             if not data.get('enabled', True):
                 continue
-            if short_name[:7] != 'ndm_isp': continue
+            #if short_name[:7] != 'ndm_isp': continue
             #if short_name != 'ndm_navigation_en': continue
             craw = Crawler(data)
             craw.process()
@@ -283,17 +340,22 @@ def test():
     url = 'http://www.statcan.gc.ca/fra/enquete/entreprise/5220'
     url = 'http://www.statcan.gc.ca/daily-quotidien/160603/dq160603f-eng.htm'
     url = 'https://www150.statcan.gc.ca/n1/en/subjects'
-    c = get_web_html(url)
+    url = 'https://icn-rci.statcan.ca/07/07f/07f1/07f1_000-eng.html'
+    url = 'https://icn-rci.statcan.ca/888/888c/888c16/888c16_001-fra.html'
+    url = 'https://icn-rci.statcan.ca/24/24e/24e_000-eng.html'
+    c = get_web_html(None, url).encode('utf-8')
+    #print (c)
     c = filter_stopindex(c)
-    doc = Doc(url, c, ['header', 'footer'], [{'h1': { "id": "wb-cont", "class": "page-header" }}] )
+    #doc = Doc(url, c, ['header', 'footer'], [{'h1': { "id": "wb-cont", "class": "page-header" }}] )
+    doc = Doc(url, c, ['header', 'footer'], None )
     doc.process()
-    doc.debug()
+    #doc.debug()
 
     data = []
     #data.append(doc.header())
     data.append(doc.export())
     write_csv('/tmp/isp.csv', data)
-    logging.info('doc last modified: '+ doc.last_modified)
+    logging.info('doc last modified: '+ str(doc.last_modified))
     return
 
 main()

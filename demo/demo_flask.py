@@ -51,9 +51,12 @@ def static_page(page_name):
 def css_page(page_name):
     return _send_static(page_name)
 
-def _get_search(q, start_page=1, page_size=20):
+def _get_search(q, start_page=1, page_size=20, label=None, burl=None):
     start = (start_page-1)*page_size
-    url = ''.join([base_url, 'q=', q, '&start={0}&num={1}'.format(start,page_size)])
+    if not burl: burl=base_url
+    if label:
+        q = q + '+label%3A' +label
+    url = ''.join([burl, 'q=', q, '&start={0}&num={1}'.format(start,page_size)])
     print (url)
     user_agent = {'User-agent': 'statcan search'}
     r = requests.get(url=url, headers=user_agent, timeout=10)
@@ -94,6 +97,56 @@ def search():
                                     total=total, record_name='users')
     return render_template('index.html', qval=qval or '', res=res, locale=get_locale(),
                            pagination=pagination)
+
+@app.route("/<lang_code>/ib_search", methods=['GET'])
+def ib_search():
+    qval = request.args.get('q')
+    page = request.args.get('page', 1, type=int)
+    print (qval, request.get_json(), request.data, request.args)
+    res = None
+    pagination = None
+    if qval:
+        res = _get_search(qval, page, 20, 'ib', 'http://f7wcmstestb2.statcan.ca:9601/json/?')
+        if res:
+            res = json.loads(res)['response']
+            total, per_page = res['record_count'], 20
+            href=''.join(['/en/search?q=',qval,
+                           '&num=20&page={0}'])
+            if total > per_page:
+                pagination = Pagination(page=page, per_page=per_page,
+                                    href = href, bs_version=4,
+                                    total=total, record_name='users')
+    return render_template('index_ib.html', qval=qval or '', res=res, locale=get_locale(),
+                           pagination=pagination)
+
+@app.route("/<lang_code>/ecn_search", methods=['GET'])
+def ecn_search():
+    qval = request.args.get('q')
+    page = request.args.get('page', 1, type=int)
+    print (qval, request.get_json(), request.data, request.args)
+    res = None
+    pagination = None
+    if qval:
+        res = _get_search(qval, page, 20, 'ecn', 'http://f7wcmstestb2.statcan.ca:9601/json/?')
+        if res:
+            res = json.loads(res)['response']
+            total, per_page = res['record_count'], 20
+            href=''.join(['/en/search?q=',qval,
+                           '&num=20&page={0}'])
+            if total > per_page:
+                pagination = Pagination(page=page, per_page=per_page,
+                                    href = href, bs_version=4,
+                                    total=total, record_name='users')
+    return render_template('index.html', qval=qval or '', res=res, locale=get_locale(),
+                           pagination=pagination)
+
+
+@app.route("/<lang_code>/adv_search", methods=['GET'])
+def advanced_search():
+    qval=None
+    res=None
+    return render_template('adv.html', qval=qval or '', res=res, locale=get_locale(),
+                           pagination=None)
 
 @app.route('/favicon.ico')
 def favicon():
