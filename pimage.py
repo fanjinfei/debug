@@ -66,7 +66,7 @@ def image_read(show=False):
     return pix1, pix2
     
 def test_read():
-    filename = sys.argv[1]
+    filename = sys.argv[1] #3D_33_LEFT.mp4 right
     vid = imageio.get_reader(filename,  'ffmpeg')
     print vid.get_meta_data()
     nums = [10, 287]

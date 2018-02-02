@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from bs4 import BeautifulSoup as mparser
 from bs4.element import Comment
 from urlparse import urlparse
@@ -15,6 +17,7 @@ import traceback
 
 import time
 from datetime import datetime
+import dateparser
 
 #export PYTHONWARNINGS="ignore:Unverified HTTPS request"
 import urllib3
@@ -106,14 +109,15 @@ def get_inc_text(m, dts):
     return u" ".join(t.strip() for t in visible_texts)
 
 class Doc():
-    def __init__(self, url, content, excl_htmls, incl_htmls, lang='en'): #to get default host url
-        #self.s = mparser(filter_stopindex(content), "lxml")
-        self.s = mparser(filter_stopindex(content), "html.parser")
+    def __init__(self, url, content, excl_htmls, incl_htmls, lang='en', last_modified=True): #to get default host url
+        self.s = mparser(filter_stopindex(content), "lxml")
+        #self.s = mparser(filter_stopindex(content), "html.parser")
         self.url = url
         self.last_modified = None
         self.title = None
         self.content = None
         self.last_crawled = str(int(time.time()))
+        self.try_last_modified = last_modified
         self.author = None
         self.format = 'html' #filetype
         self.language = lang #fr
@@ -126,6 +130,9 @@ class Doc():
             self.prefix = 'https://' + self.prefix
         else:
             self.prefix = 'http://' + self.prefix
+        pathp = url.rfind('/')
+        if pathp < 9: self.upath = self.prefix+'/'
+        else: self.upath = url[:pathp+1]
 
     def html_item(self, nodes, name, attrs, all=True):
         info = self.s.find(name=name, attrs=attrs)
@@ -157,6 +164,80 @@ class Doc():
         except:
             return None
 
+    def get_meta_date(self, s):
+        #dt = s.find(lambda tag: tag.name.lower()=='meta', name=lambda x: x and x.lower()=='date')
+	#meta name="dcterms.modifed" scheme="W3CDTF" content="2011-12-21" />
+        ms = s.findAll(name='meta')
+        for item in ms:
+            iname = item.get('name', None)
+            if not iname: continue
+            iname = iname.lower()
+            if iname in ['date', 'dcterms.modifed', 'dcterms.issued']:
+                return item['content']
+        return None
+
+    def get_title_date(self, title):
+        if not self.try_last_modified: return None
+        if not title: return None
+        try:
+            dstr = title[title.find(',')+1:]
+            sep = dstr.find('.')
+            if  sep!= -1:
+                dstr=dstr[:sep]
+            return str(dateparser.parse(dstr.strip()).date()) + 'T00:00:01.000Z'
+        except:
+            return None
+
+    def get_link_date(self, url):
+        #http://www.statcan.gc.ca/daily-quotidien/990513/dq990513e-eng.htm -> 1999-05-13
+        a = url.find('daily-quotidien/')
+        if not a: return None
+        s = url[a+len('daily-quotidien/'):]
+        if s[6] != '/': return None
+        s = s[:6]
+        if not isdigit(s): return None
+        return '19'+s[:2] +'-' + s[2:4] + '-' + s[4:]
+
+    def get_content_date(self, content):
+        #import pdb; pdb.set_trace()
+	start = content.find(u"modifi\xe9 le\xa0:")
+        if start <0:
+            start = content.find("date de modification")
+        if start <0:
+            start = content.find("date modified:")
+        if start>0:
+            s = content[start:]
+            s = s[s.find(':')+1:]
+            dt =filter(lambda x: x.strip(), s.split(' '))
+            if dt and len(dt[0])>=8 : return dt[0]
+
+        def get_ldate(content, start):
+            s = content[start:].split()
+            if len(s) >=5:
+                s = s[2:5]
+                return '-'.join(s)
+            return None
+
+        start = content.find(u"modifi\xe9 le\xa0")
+        if start <0:
+            start = content.find(u"modifi\xe9 le")
+        if start <0:
+            start = content.find("last modified")
+        if start <0:
+            start = content.find("date published:")
+
+        if start>0:
+            dt = get_ldate(content, start)
+            if dt: return dt
+
+        start = content.find(u"publi\xe9 le :")
+        if start>0:
+            start += 7
+            dt = get_ldate(content, start)
+            if dt: return dt
+
+        return None
+
     def process(self):
 	dt = self.s.find(id="wb-dtmd")
         if not dt:
@@ -176,6 +257,12 @@ class Doc():
                     print (traceback.format_exc())
                     self.last_modified = '2015-12-17T00:00:01.000Z'
             dts = dt.findChildren()
+        if not self.last_modified:
+            lm = self.get_meta_date(self.s)
+            if lm:
+                self.last_modified = lm + 'T00:00:01.000Z'
+        if not self.last_modified:
+                self.last_modified = self.get_link_date(self.url)               
 
         dts = self.html_sections(dts, self.excl_htmls)
 
@@ -185,17 +272,32 @@ class Doc():
             self.content = get_inc_text(self.s, self.incl_htmls).strip()
         title = self.s.find(name='title')
         self.title = title.text if title else None
-        self.title = self.title.replace('\n', ' ') 
+        self.title = self.title.replace('\n', ' ')  if self.title else ''
         self.title = self.title.replace('\t', ' ') 
-        self.content = self.content.replace('\n', ' ')
+        if not self.last_modified:
+            self.last_modified = self.get_title_date(self.title)
+        
+        hp = HTMLParser()
+        self.content = hp.unescape(self.content)
+        self.content = self.content.replace('\n', ' ') if self.content else ''
         self.content = self.content.replace('\t', ' ')
         self.content = self.content.replace('\r', ' ')
+        if (not self.last_modified) and self.try_last_modified:
+            rawContent = ' '.join(get_text(self.s, []).split())
+            self.last_modified = self.get_content_date(rawContent.lower())
 
         self.links = []
         for link in self.s.find_all('a', href=True):
-            url = link['href']
+            url = link['href'].strip()
+            if not url: continue
             if url[0] == '#': continue
-            if url[:4] != 'http': url = self.prefix  + url.strip()
+            if url[:7].lower() == 'mailto:': continue
+            if url[:3] == '../': continue
+            if url[:4] != 'http':
+                if url[0]=='/':
+                    url = self.prefix  + url.strip()
+                else:
+                    url = self.upath + url.strip()
             id_same = url.rfind('#')
             if id_same != -1: #chop it
                 url = url[:id_same]
@@ -209,10 +311,10 @@ class Doc():
 
     def export(self):
         hp = HTMLParser()
-        res = [self.url, hp.unescape(self.title), hp.unescape(self.content),
+        res = [self.url, hp.unescape(self.title), self.content,
                 self.last_modified, 
                 self.format, self.language, self.last_crawled, self.encoding]
-        return [ item.replace('\t', ' ').replace('\r', ' ').replace('\d', ' ') for item in res]
+        return [ item.replace('\t', ' ').replace('\r', ' ').replace('\d', ' ') if item else '' for item in res]
 
     def debug(self):
         print '\n'.join(self.export())
@@ -225,8 +327,14 @@ class Crawler():
         self.excl_htmls = data.get('exclude_html_sections', None)
         self.incl_htmls = data.get('include_html_sections', None)
         self.incls = data['include_patterns']
-        self.excls = data['exclude_patterns']
+        self.excls = data.get('exclude_patterns', [])
+        self.follow_only = data.get('follow_link_not_index', [])
         self.csv_file = data['output_file']
+        self.default_last_modified = data.get('default_last_modified', None)
+        self.try_last_modified = data.get('try_last_modified', True)
+        if not self.try_last_modified: #no field in html
+            if not self.default_last_modified:
+                self.default_last_modified = datetime.now().isoformat()+'Z'
         self.handled_urls = {}
 
         self.ims = dict( (p,re.compile(p, re.I)) for p in self.incls)
@@ -234,6 +342,8 @@ class Crawler():
 
         skip_index_urls = [ '_dot_file', '-dot-', 'dotpage', 'Dot_', 'DOT']
         self.skip_index_patterns = [re.compile(p, re.I) for p in skip_index_urls]
+        for p in self.follow_only:
+            self.skip_index_patterns.append(re.compile(p, re.I))
         self.do_index = re.compile('Cadotte', re.I)
 
         self.sessions = {}
@@ -266,6 +376,7 @@ class Crawler():
     def process(self):
         urls = {}
         failed_urls = []
+        error_urls = []
         for url in self.start_links:
             urls[url] = 0
         data = []
@@ -295,8 +406,14 @@ class Crawler():
                 print "failed:", url
                 continue
             c = filter_stopindex(c)
-            doc = Doc(url, c, self.excl_htmls, self.incl_htmls, self.lang)
+            doc = Doc(url, c, self.excl_htmls, self.incl_htmls, self.lang, self.try_last_modified)
             doc.process()
+            if not doc.last_modified:
+                if self.default_last_modified:
+                     doc.last_modified = self.default_last_modified
+                else:
+                    print "error last modified"
+                    error_urls.append(url)
             links = doc.link()
             if self.index_filter(doc):
                 data.append(doc.export())
@@ -314,6 +431,7 @@ class Crawler():
 
         write_csv(self.csv_file, data)
         print "failed urls:", failed_urls
+        print "error parsing urls:", error_urls
 
 def read_config(filename):
     with open(filename) as f:
@@ -327,9 +445,12 @@ def main():
     confs = read_config(sys.argv[1])
     for conf in confs:
         for short_name, data in conf.iteritems():
+            print '"'+short_name+'"'
             if not data.get('enabled', True):
                 continue
-            #if short_name[:7] != 'ndm_isp': continue
+            #if short_name[:10] != 'statcan_en': continue
+            if short_name[:8] != 'phone_en': continue
+            #if short_name.strip() != 'daily_archive_en': continue
             #if short_name != 'ndm_navigation_en': continue
             craw = Crawler(data)
             craw.process()
@@ -343,12 +464,32 @@ def test():
     url = 'https://icn-rci.statcan.ca/07/07f/07f1/07f1_000-eng.html'
     url = 'https://icn-rci.statcan.ca/888/888c/888c16/888c16_001-fra.html'
     url = 'https://icn-rci.statcan.ca/24/24e/24e_000-eng.html'
-    c = get_web_html(None, url).encode('utf-8')
+    url = 'http://www.statcan.gc.ca/daily-quotidien/020423/dq020423a-eng.htm'
+    url = 'http://www.statcan.gc.ca/daily-quotidien/990830/dq990830c-eng.htm'
+    url = 'http://www.statcan.gc.ca/daily-quotidien/990830/dq990830c-fra.htm'
+    url = 'http://www44.statcan.ca/2015/02/s0500-eng.htm'
+
+    url = 'http://www44.statcan.ca/2003/12/s0101_1_f.htm' # date modified
+    url = 'http://www44.statcan.ca/2003/12/s0101_1_e.htm'
+    url = 'http://www44.statcan.ca/2003/06/s0400_e.htm'
+    url = 'http://www44.statcan.ca/2006/09/s0700_f.htm'
+    url = 'http://www44.statcan.ca/2000/11/s0700_f.htm'
+    url = 'http://www44.statcan.ca/2007/07/s0101b_e.htm'
+    url = 'http://www44.statcan.ca/2002/11/0201_e.htm'
+    if len(sys.argv) >=2:
+         f = open(sys.argv[1])
+         c = f.read()
+    else:
+        c = get_web_html(None, url).encode('utf-8')
     #print (c)
     c = filter_stopindex(c)
     #doc = Doc(url, c, ['header', 'footer'], [{'h1': { "id": "wb-cont", "class": "page-header" }}] )
     doc = Doc(url, c, ['header', 'footer'], None )
     doc.process()
+    
+    print doc.get_meta_date(doc.s)
+    print doc.get_title_date(doc.title)
+    print doc.last_modified
     #doc.debug()
 
     data = []
