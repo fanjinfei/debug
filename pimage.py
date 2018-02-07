@@ -1,7 +1,8 @@
 import sys, math
 import pylab
-import imageio
-from PIL import Image
+import imageio #read video
+from PIL import Image #read image
+import rasl #image alignment
 
 len_d = 60.0 #mm, Panasonic AG-3DA1 HD 3D camera
 focus = 15.0 #mm
@@ -38,6 +39,9 @@ def cal_pos(pix1, pix2):
         print "{0:.2f}m {1} {2} {3}".format(d/100, x1, x2, (x2-x1))
 
         #calculate x,y (z=d)
+
+def alignment(pix1, pix2):
+    print 'align...'
 
 #given pixel_d, center_offset from above calibration
 def point_pos(pix1, pix2):

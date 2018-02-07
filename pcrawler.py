@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup as mparser
 from bs4.element import Comment
 from urlparse import urlparse
 from HTMLParser import HTMLParser
+from lxml import etree
 import sys
 import re
 import requests
@@ -22,6 +23,8 @@ import dateparser
 #export PYTHONWARNINGS="ignore:Unverified HTTPS request"
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+from url_filters import daily_filter, daily_archive_filter, daily_latest_filter
 
 def get_web_html(s, url):
     user_agent = {'User-agent': 'statcan dev crawler; abuse report jinfei.fan@canada.ca'}
@@ -319,6 +322,11 @@ class Doc():
     def debug(self):
         print '\n'.join(self.export())
 
+link_filters = {
+    "daily_archive_filter": daily_archive_filter,
+    "daily_filter": daily_filter,
+    "daily_latest_filter": daily_latest_filter,
+}
 class Crawler():
     def __init__(self, data):
         self.start_links = data['start_links']
@@ -332,6 +340,7 @@ class Crawler():
         self.csv_file = data['output_file']
         self.default_last_modified = data.get('default_last_modified', None)
         self.try_last_modified = data.get('try_last_modified', True)
+        self.link_filter_func = link_filters.get(data.get('link_filter_function', None), None)
         if not self.try_last_modified: #no field in html
             if not self.default_last_modified:
                 self.default_last_modified = datetime.now().isoformat()+'Z'
@@ -373,12 +382,37 @@ class Crawler():
             if m.search(url): return False
         return True
 
+    def get_xml_sitemap(self, url, urls, urls_modified):
+        #c = get_web_html(None, url)
+        #root = etree.parse(filename).getroot()
+        #root = etree.fromstring(c.decode('utf-8')).getroot()
+        root = etree.parse(url).getroot()
+        for element in root.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}url"):
+            link = None
+            for l in element.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}loc"):
+                    urls[l.text] = 0
+                    link = l.text
+            for l in element.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}lastmod"):
+                    urls_modified[link] = l.text
+        return urls
+
+    def get_start_links(self, urls, urls_modified):
+        for url in self.start_links:
+            if url[-4:] == '.xml':
+                self.get_xml_sitemap(url, urls, urls_modified)
+            else:
+                urls[url] = 0
+        return urls
+
     def process(self):
         urls = {}
+        urls_last_modified = {}
         failed_urls = []
         error_urls = []
-        for url in self.start_links:
-            urls[url] = 0
+        urls = self.get_start_links(urls, urls_last_modified)
+        if self.link_filter_func:
+            urls = self.link_filter_func(urls)
+        import pdb; pdb.set_trace()
         data = []
         while urls:
             for url,depth in urls.iteritems():
@@ -408,6 +442,9 @@ class Crawler():
             c = filter_stopindex(c)
             doc = Doc(url, c, self.excl_htmls, self.incl_htmls, self.lang, self.try_last_modified)
             doc.process()
+            lastmod = urls_last_modified.get(url, None)
+            if lastmod:
+                doc.last_modified = lastmod # priority
             if not doc.last_modified:
                 if self.default_last_modified:
                      doc.last_modified = self.default_last_modified
@@ -449,7 +486,9 @@ def main():
             if not data.get('enabled', True):
                 continue
             #if short_name[:10] != 'statcan_en': continue
-            if short_name[:8] != 'phone_en': continue
+            #if short_name[:8] != 'phone_en': continue
+
+            if short_name.strip() != 'ndm_daily_archive_en': continue
             #if short_name.strip() != 'daily_archive_en': continue
             #if short_name != 'ndm_navigation_en': continue
             craw = Crawler(data)
