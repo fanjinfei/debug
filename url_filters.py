@@ -13,6 +13,7 @@ def daily_archive_filter(urls, latest=None, current=None):
         current = daily_filter(urls, latest)
     res = {}
     for link, d in urls.items():
+        link = link.replace('.ca/daily', '.ca/n1/daily')
         i = link.find('?rid=')
         if i > 0:
             link = link[:i]
@@ -21,6 +22,7 @@ def daily_archive_filter(urls, latest=None, current=None):
     return res
 
 def proc(url):
+        url = url.replace('.ca/daily', '.ca/n1/daily')
         if url.find('/n1/daily') < 0: return None, None # vs '/daily-q..'
         i = url.find('?rid=')
         if i < 0: return None, None
@@ -41,14 +43,16 @@ def daily_filter(urls, latest=None):
 
 def daily_latest_filter(urls):
     rids = defaultdict(list)
-    for url, _ in urls.items():
+    new_urls={}
+    for url, d in urls.items():
         link, rid = proc(url)
         if link:
+            new_urls[link] = d
             rids[rid].append(link)
     res = {}
     for rid, links in rids.items():
         links.sort()
         url = links[0]
-        res[url] = urls[url]
+        res[url] = new_urls[url]
     return res
 

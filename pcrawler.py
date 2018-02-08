@@ -5,7 +5,9 @@ from bs4.element import Comment
 from urlparse import urlparse
 from HTMLParser import HTMLParser
 from lxml import etree
+
 import sys
+import multiprocessing
 import re
 import requests
 import logging
@@ -198,7 +200,7 @@ class Doc():
         s = url[a+len('daily-quotidien/'):]
         if s[6] != '/': return None
         s = s[:6]
-        if not isdigit(s): return None
+        if not s.isdigit(): return None
         return '19'+s[:2] +'-' + s[2:4] + '-' + s[4:]
 
     def get_content_date(self, content):
