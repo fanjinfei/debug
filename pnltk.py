@@ -1,9 +1,14 @@
 import nltk, sys
+import re
+import pprint
+from nltk import word_tokenizer
 from nltk.corpus import wordnet as wn #wordnet
+from urllib import request
 
 # a silly implementation
 #nltk.chat.chatbots()
 
+#chapter 02
 print'example motocar car.n.01'
 print 'synsets:', wn.synsets('motorcar')
 print 'lemma_names:', wn.synset('car.n.01').lemma_names()
@@ -46,11 +51,47 @@ print 'root:', motorcar.root_hypernyms()
 
 #from items to their components (meronyms) or to the things they are contained in (holonyms)
 print '\n------ meronyms holohyms ---------'
+print 'tree part meronyms', wn.synset('tree.n.01').part_meronyms()
+print 'tree substance meronyms', wn.synset('tree.n.01').substance_meronyms()
+print 'tree member holonyms', wn.synset('tree.n.01').member_holonyms()
+
+for synset in wn.synsets('mint', wn.NOUN):
+    print(synset.name() + ':', synset.definition())
+print 'mint part holonyms', wn.synset('mint.n.04').part_holonyms()
+print 'mint substance holonyms',wn.synset('mint.n.04').substance_holonyms()
+
+print '\n-------- verb entails ----------'
+print 'walk', wn.synset('walk.v.01').entailments()
+print 'eat', wn.synset('eat.v.01').entailments()
+
+print '\n------------- antonym ------------'
+print 'supply antonym', wn.lemma('supply.n.02.supply').antonyms()
+print 'rush antonym', wn.lemma('rush.v.01.rush').antonyms()
+
+#semantic similarity
+print '\n------------- semantic similarity ------------'
+right = wn.synset('right_whale.n.01')
+orca = wn.synset('orca.n.01')
+minke = wn.synset('minke_whale.n.01')
+tortoise = wn.synset('tortoise.n.01')
+novel = wn.synset('novel.n.01')
+print 'right_whale lowest common hypernym with mink_whale', right.lowest_common_hypernyms(minke)
+print right.lowest_common_hypernyms(orca)
+print right.lowest_common_hypernyms(tortoise)
+print right.lowest_common_hypernyms(novel)
+
+print right.min_depth()
+print wn.synset('baleen_whale.n.01').min_depth()
+print wn.synset('whale.n.02').min_depth()
+print wn.synset('vertebrate.n.01').min_depth()
+print wn.synset('entity.n.01').min_depth()
+
+#process raw text, chapter 03
 
 
 sys.exit(0) #done following test
 
-'''
+''' chaper 01
 from nltk.corpus import gutenberg
 from nltk.corpus import webtext
 from nltk.corpus import nps_chat
