@@ -115,6 +115,7 @@ def get_inc_text(m, dts):
 
 class Doc():
     def __init__(self, url, content, excl_htmls, incl_htmls, lang='en', last_modified=True): #to get default host url
+        self.ori_content = content
         self.s = mparser(filter_stopindex(content), "lxml")
         #self.s = mparser(filter_stopindex(content), "html.parser")
         self.url = url
@@ -161,6 +162,15 @@ class Doc():
                    nodes.append(child)
         return nodes
 
+    def try_html_parser_content_date(self):
+	s = mparser(self.ori_content, "html.parser")
+        content = get_text(s, [])
+        content = content.replace('\n', ' ') if self.content else ''
+        content = content.replace('\t', ' ')
+        content = content.replace('\r', ' ')
+        content = ' '.join(content.split())
+        return self.get_content_date(content.lower())
+
     def verify_date(self, s): #some hack
         try:
             r = s.replace('*', '0').replace(' ', '-')
@@ -182,6 +192,7 @@ class Doc():
         return None
 
     def get_title_date(self, title):
+        return None # not reliable
         if not self.try_last_modified: return None
         if not title: return None
         try:
@@ -189,7 +200,9 @@ class Doc():
             sep = dstr.find('.')
             if  sep!= -1:
                 dstr=dstr[:sep]
-            return str(dateparser.parse(dstr.strip()).date()) + 'T00:00:01.000Z'
+            r = str(dateparser.parse(dstr.strip()).date()) + 'T00:00:01.000Z'
+            print 'title date:', r
+            return r
         except:
             return None
 
@@ -219,7 +232,12 @@ class Doc():
         def get_ldate(content, start):
             s = content[start:].split()
             if len(s) >=5:
+                # hack 200<asdfaf>0
+                if s[2] == '200':
+                    s[2] = s[2]+s[3]
+                    del s[3]
                 s = s[2:5]
+                if s[0].find('-') > 0: return s[0]
                 return '-'.join(s)
             return None
 
@@ -289,7 +307,9 @@ class Doc():
         self.content = self.content.replace('\r', ' ')
         if (not self.last_modified) and self.try_last_modified:
             rawContent = ' '.join(get_text(self.s, []).split())
-            self.last_modified = self.get_content_date(rawContent.lower())
+            rdate = self.get_content_date(rawContent.lower())
+            if rdate:
+                 self.last_modified = rdate +'T00:00:01.000Z'
 
         self.links = []
         for link in self.s.find_all('a', href=True):
@@ -307,6 +327,15 @@ class Doc():
             if id_same != -1: #chop it
                 url = url[:id_same]
             self.links.append(url.strip())
+
+        self.last_modified = self.verify_date(self.last_modified)
+        if not self.last_modified:
+            #import pdb; pdb.set_trace()
+            lastmod = self.try_html_parser_content_date()
+            if lastmod:
+                  lastmod += 'T00:00:01.000Z' #bad html syntax, can not be handled by lxml
+                  self.last_modified = self.verify_date(lastmod)
+
 
     def link(self):
         return self.links
@@ -329,6 +358,10 @@ link_filters = {
     "daily_filter": daily_filter,
     "daily_latest_filter": daily_latest_filter,
 }
+
+def crawler_worker():
+    pass
+
 class Crawler():
     def __init__(self, data):
         self.start_links = data['start_links']
@@ -406,6 +439,9 @@ class Crawler():
                 urls[url] = 0
         return urls
 
+    def multi_process(self):
+        pass
+
     def process(self):
         urls = {}
         urls_last_modified = {}
@@ -414,7 +450,6 @@ class Crawler():
         urls = self.get_start_links(urls, urls_last_modified)
         if self.link_filter_func:
             urls = self.link_filter_func(urls)
-        import pdb; pdb.set_trace()
         data = []
         while urls:
             for url,depth in urls.iteritems():
@@ -482,6 +517,16 @@ def main():
                          filename='/tmp/myapp.log', level=logging.INFO) #INFO, DEBUG
 
     confs = read_config(sys.argv[1])
+    if len(sys.argv) >2:
+        for conf in confs:
+            data = conf.get(sys.argv[2], None)
+            if not data: 
+                continue
+            craw = Crawler(data)
+            craw.process()
+            return
+        return
+
     for conf in confs:
         for short_name, data in conf.iteritems():
             print '"'+short_name+'"'
@@ -490,7 +535,7 @@ def main():
             #if short_name[:10] != 'statcan_en': continue
             #if short_name[:8] != 'phone_en': continue
 
-            if short_name.strip() != 'ndm_daily_archive_en': continue
+            if short_name.strip() != 'ndm_daily_latest_en': continue
             #if short_name.strip() != 'daily_archive_en': continue
             #if short_name != 'ndm_navigation_en': continue
             craw = Crawler(data)
@@ -517,7 +562,11 @@ def test():
     url = 'http://www44.statcan.ca/2000/11/s0700_f.htm'
     url = 'http://www44.statcan.ca/2007/07/s0101b_e.htm'
     url = 'http://www44.statcan.ca/2002/11/0201_e.htm'
-    if len(sys.argv) >=2:
+    url = 'http://www44.statcan.ca/1999/12/s0502d_f.htm'
+    url = 'http://www44.statcan.ca/2006/11/s0506_e.htm'
+    url = 'http://www44.statcan.ca/2000/06/0502_e.htm'
+    url = 'http://www44.statcan.ca/old/Eng-stat/past-iss/99/e990113.html' #pasrse title 
+    if len(sys.argv) >=2 and sys.argv[1]!='test':
          f = open(sys.argv[1])
          c = f.read()
     else:
@@ -539,9 +588,10 @@ def test():
     write_csv('/tmp/isp.csv', data)
     logging.info('doc last modified: '+ str(doc.last_modified))
     return
-
-main()
-#test()
+if sys.argv[1] =='test':
+    test()
+else:
+    main()
 
 '''
 directories=/opt/es/demo/raw_data/module_isp
