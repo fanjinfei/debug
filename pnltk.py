@@ -285,6 +285,16 @@ print regexp_tagger.evaluate(brown_tagged_sents)
 #nltk.tbl.demo.demo() #re-organized nltk demo, Accuracy 0.8551
 print '\n -- training Brill tagger: skipped --'
 print 'linguists use morphological, syntactic, and semantic clues to determine the category of a word'
+print '''Some morphosyntactic distinctions in the Brown tagset
+
+Form	Category	Tag
+go	base	VB
+goes	3rd singular present	VBZ
+gone	past participle	VBN
+going	gerund	VBG
+went	simple past	VBD'''
+
+print '\n---- text classification ---un*/supervised------'
 
 sys.exit(0) #done following test
 

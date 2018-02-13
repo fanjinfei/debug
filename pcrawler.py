@@ -428,9 +428,13 @@ class Crawler():
                     link = l.text
                     link = link.replace('.ca/daily', '.ca/n1/daily') #pre-processor
                     urls[link] = 0
-#            if not link: continue
+                      
+            if not link: continue
             for l in element.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}lastmod"):
-                    urls_modified[link] = l.text + 'T00:00:01.000Z'
+                i = link.find('?rid=')
+                if i > 0:
+                    link = link[:i]
+                urls_modified[link] = l.text + 'T00:00:01.000Z'
         return urls
 
     def get_start_links(self, urls, urls_modified):
@@ -534,10 +538,10 @@ def main():
             print '"'+short_name+'"'
             if not data.get('enabled', True):
                 continue
-            #if short_name[:10] != 'statcan_en': continue
+            if short_name.strip()[:10] != 'ndm_daily_': continue
             #if short_name[:8] != 'phone_en': continue
 
-            if short_name.strip() != 'ndm_daily_latest_en': continue
+            #if short_name.strip() != 'ndm_daily_latest_en': continue
             #if short_name.strip() != 'daily_archive_en': continue
             #if short_name != 'ndm_navigation_en': continue
             craw = Crawler(data)
