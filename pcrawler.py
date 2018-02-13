@@ -425,10 +425,12 @@ class Crawler():
         for element in root.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}url"):
             link = None
             for l in element.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}loc"):
-                    urls[l.text] = 0
                     link = l.text
+                    link = link.replace('.ca/daily', '.ca/n1/daily') #pre-processor
+                    urls[link] = 0
+#            if not link: continue
             for l in element.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}lastmod"):
-                    urls_modified[link] = l.text
+                    urls_modified[link] = l.text + 'T00:00:01.000Z'
         return urls
 
     def get_start_links(self, urls, urls_modified):
@@ -592,6 +594,12 @@ if sys.argv[1] =='test':
     test()
 else:
     main()
+
+#search daily compare, keywords
+#0. CPI (daily)
+#1. "consumer price index" 2018
+#    http://www120.statcan.gc.ca/stcsr/en/sr1/srs?start=0&showSum=hide&fq=&enableElevation=true&fq=stclac%3A2&q=%22consumer+price+index%22+ds%3Adaily*+2018&sort=score+desc
+#    http://f7wcmstestb2.statcan.ca:8001/en/ecn_search?sub=daily&q=%22consumer+price+index%22+2018&sort=
 
 '''
 directories=/opt/es/demo/raw_data/module_isp

@@ -1,9 +1,17 @@
+# -*- coding: utf-8 -*-
+
+from random import randint
 import nltk, sys
 import re
 import pprint
-from nltk import word_tokenizer
+from nltk import word_tokenize
 from nltk.corpus import wordnet as wn #wordnet
-from urllib import request
+from nltk.corpus import gutenberg, nps_chat
+from nltk.corpus import brown
+#from urllib import request
+import requests
+import networkx as nx
+import matplotlib
 
 # a silly implementation
 #nltk.chat.chatbots()
@@ -87,7 +95,196 @@ print wn.synset('vertebrate.n.01').min_depth()
 print wn.synset('entity.n.01').min_depth()
 
 #process raw text, chapter 03
+print '\n--- chap 03 -regex raw word pattern/text ---'
+def stem(word):
+    regexp = r'^(.*?)(ing|ly|ed|ious|ies|ive|es|s|ment)?$'
+    stem, suffix = re.findall(regexp, word)[0]
+    return stem
 
+raw = """DENNIS: Listen, strange women lying in ponds distributing swords
+is no basis for a system of government.  Supreme executive power derives from
+a mandate from the masses, not from some farcical aquatic ceremony."""
+tokens = word_tokenize(raw)
+print [stem(t) for t in tokens]
+
+moby = nltk.Text(gutenberg.words('melville-moby_dick.txt'))
+print moby.findall(r"<a> (<.*>) <man>")
+print moby.findall(r"<a> <.*> <man>")
+
+print '\n--- word stemming ----------'
+porter = nltk.PorterStemmer()
+lancaster = nltk.LancasterStemmer()
+wnl = nltk.WordNetLemmatizer()
+print 'Porter stemmer:', [porter.stem(t) for t in tokens]
+print 'Lancaster stemmer:', [lancaster.stem(t) for t in tokens]
+print 'WN lemmatizer:', [wnl.lemmatize(t) for t in tokens]
+
+print '\n------ sentence segmentation -----'
+text = nltk.corpus.gutenberg.raw('chesterton-thursday.txt')
+sents = nltk.sent_tokenize(text)
+pprint.pprint(sents[79:89])
+
+print'\n---- word segmentation ---' #like speech
+def segment(text, segs):
+    words = []
+    last = 0
+    for i in range(len(segs)):
+        if segs[i] == '1':
+            words.append(text[last:i+1])
+            last = i+1
+    words.append(text[last:])
+    return words
+def evaluate(text, segs):
+    words = segment(text, segs)
+    text_size = len(words)
+    lexicon_size = sum(len(word) + 1 for word in set(words))
+    return text_size + lexicon_size
+def flip(segs, pos):
+    return segs[:pos] + str(1-int(segs[pos])) + segs[pos+1:]
+
+def flip_n(segs, n):
+    for i in range(int(n)):
+        segs = flip(segs, randint(0, len(segs)-1))
+    return segs
+
+def anneal(text, segs, iterations, cooling_rate):
+    temperature = float(len(segs))
+    while temperature > 0.5:
+        best_segs, best = segs, evaluate(text, segs)
+        for i in range(iterations):
+            guess = flip_n(segs, round(temperature))
+            score = evaluate(text, guess)
+            if score < best:
+                best, best_segs = score, guess
+        score, segs = best, best_segs
+        temperature = temperature / cooling_rate
+        print(evaluate(text, segs), segment(text, segs))
+    print()
+    return segs
+text = "doyouseethekittyseethedoggydoyoulikethekittylikethedoggy"
+seg1 = "0000000000000001000000000010000000000000000100000000000"
+print 'Anneal:', 'skipped' #anneal(text, seg1, 5000, 1.2)
+print "shoud be: 43 ['doyou', 'see', 'thekitty', 'see', 'thedoggy', 'doyou', 'like', 'thekitty', 'like', 'thedoggy']"
+
+print '\n-----chap 04 --- network X - python programming-----'
+def traverse(graph, start, node):
+    graph.depth[node.name] = node.shortest_path_distance(start)
+    for child in node.hyponyms():
+        graph.add_edge(node.name, child.name)
+        traverse(graph, start, child)
+
+def hyponym_graph(start):
+    G = nx.Graph()
+    G.depth = {}
+    traverse(G, start, start)
+    return G
+
+def graph_draw(graph):
+    from networkx.drawing.nx_agraph import graphviz_layout
+#sudo apt install libgraphviz-dev
+#pip install pygraphviz
+    pos = graphviz_layout(graph)
+    #nx.draw(graph, pos)
+    nx.draw_networkx(graph, 
+         node_size = [16 * graph.degree(n) for n in graph],
+         node_color = [graph.depth[n] for n in graph],
+         with_labels = False)
+#
+#    nx.drawing.draw_graphviz(graph,
+#         node_size = [16 * graph.degree(n) for n in graph],
+#         node_color = [graph.depth[n] for n in graph],
+#         with_labels = False)
+    matplotlib.pyplot.show()
+
+dog = wn.synset('dog.n.01')
+graph = hyponym_graph(dog)
+print 'draw graph skipped' #graph_draw(graph)
+
+print '\n---- chap 05 categorize/tagging word --------------'
+#Concept: part-of-speech tagging, POS-tagging, or simply tagging. 
+#Parts of speech are also known as word classes or lexical categories.
+text = word_tokenize("And now for something completely different")
+print 'Part of speech:', nltk.pos_tag(text)
+# CC: coordinating conjunction
+# RB: adverbs
+# IN: a preposition
+# NN: noun
+# JJ: an adjective.
+#NLTK provides documentation for each tag, which can be queried using the tag, e.g. nltk.help.upenn_tagset('RB'), or a regular expression, e.g. nltk.help.upenn_tagset('NN.*'). Some corpora have README files with tagset documentation, see  nltk.corpus.???.readme(), substituting in the name of the corpus.
+#
+text = word_tokenize("They refuse to permit us to obtain the refuse permit")
+print nltk.pos_tag(text)
+text = 'The woman bought over $150,000 worth of clothes.'
+print nltk.pos_tag(word_tokenize(text))
+
+# VBP: present tense verb
+# VBD: past tense verb
+# VBN: past participle
+# DT: determiner (the,a, an)
+# TO: "to" as preposition or infinitive marker
+# NNS: noun plural
+# PRP: pronoun, personal
+
+'''
+Lexical categories like "noun" and part-of-speech tags like NN seem to have their uses, but the details will be obscure to many readers. You might wonder what justification there is for introducing this extra level of information. Many of these categories arise from superficial analysis the distribution of words in text. Consider the following analysis involving woman (a noun), bought (a verb), over (a preposition), and the (a determiner). The text.similar() method takes a word w, finds all contexts w1w w2, then finds all words w' that appear in the same context, i.e. w1w'w2.
+'''
+# universal tagset is different from pos_tag ???
+print nltk.corpus.brown.tagged_words(tagset='universal')[:10]
+'''
+Universal Part-of-Speech Tagset
+
+Tag	Meaning	English Examples
+ADJ	adjective	new, good, high, special, big, local
+ADP	adposition	on, of, at, with, by, into, under
+ADV	adverb	really, already, still, early, now
+CONJ	conjunction	and, or, but, if, while, although
+DET	determiner, article	the, a, some, most, every, no, which
+NOUN	noun	year, home, costs, time, Africa
+NUM	numeral	twenty-four, fourth, 1991, 14:24
+PRT	particle	at, on, out, over per, that, up, with
+PRON	pronoun	he, their, her, its, my, I, us
+VERB	verb	is, say, told, given, playing, would
+.	punctuation marks	. , ; !
+X	other	ersatz, esprit, dunno, gr8, univeristy
+'''
+brown_news_tagged = brown.tagged_words(categories='news', tagset='universal')
+tag_fd = nltk.FreqDist(tag for (word, tag) in brown_news_tagged)
+print 'tagged news:', tag_fd.most_common()
+
+wsj = nltk.corpus.treebank.tagged_words(tagset='universal')
+wsj = nltk.corpus.treebank.tagged_words()
+cfd1 = nltk.ConditionalFreqDist(wsj)
+print [w for w in cfd1.conditions() if 'VBD' in cfd1[w] and 'VBN' in cfd1[w]][:10]
+idx1 = wsj.index(('kicked', 'VBD'))
+idx2 = wsj.index(('kicked', 'VBN'))
+print wsj[idx1-4:idx1+1]
+print wsj[idx2-4:idx2+1]
+
+'''
+English has several categories of closed class words in addition to prepositions, such as articles (also often called determiners) (e.g., the, a), modals (e.g., should, may), and personal pronouns (e.g., she, they). Each dictionary and grammar classifies these words differently.
+'''
+
+print '\n--- tagger --- (regex, lookup) ----'
+patterns = [
+    (r'.*ing$', 'VBG'),               # gerunds
+    (r'.*ed$', 'VBD'),                # simple past
+    (r'.*es$', 'VBZ'),                # 3rd singular present
+    (r'.*ould$', 'MD'),               # modals
+    (r'.*\'s$', 'NN$'),               # possessive nouns
+    (r'.*s$', 'NNS'),                 # plural nouns
+    (r'^-?[0-9]+(.[0-9]+)?$', 'CD'),  # cardinal numbers
+    (r'.*', 'NN')                     # nouns (default)
+]
+regexp_tagger = nltk.RegexpTagger(patterns)
+brown_sents = brown.sents(categories='news')
+brown_tagged_sents = brown.tagged_sents(categories='news')
+print regexp_tagger.tag(brown_sents[3])
+print regexp_tagger.evaluate(brown_tagged_sents)
+
+#nltk.tag.brill.demo() # sequence if-then-else
+#nltk.tbl.demo.demo() #re-organized nltk demo, Accuracy 0.8551
+print '\n -- training Brill tagger: skipped --'
+print 'linguists use morphological, syntactic, and semantic clues to determine the category of a word'
 
 sys.exit(0) #done following test
 
