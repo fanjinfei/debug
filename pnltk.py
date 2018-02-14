@@ -8,16 +8,18 @@ from nltk import word_tokenize
 from nltk.corpus import wordnet as wn #wordnet
 from nltk.corpus import gutenberg, nps_chat
 from nltk.corpus import brown
+from nltk.corpus import conll2000
 #from urllib import request
 import requests
 import networkx as nx
 import matplotlib
+# from __future__ import print_function
 
 # a silly implementation
 #nltk.chat.chatbots()
 
 #chapter 02
-print'example motocar car.n.01'
+print 'example motocar car.n.01'
 print 'synsets:', wn.synsets('motorcar')
 print 'lemma_names:', wn.synset('car.n.01').lemma_names()
 print 'definition:', wn.synset('car.n.01').definition()
@@ -294,7 +296,7 @@ gone	past participle	VBN
 going	gerund	VBG
 went	simple past	VBD'''
 
-print '\n---- text classification ---un*/supervised------'
+print '\n---- chap 06 text classification ---un*/supervised------'
 print '#feature extraction'
 print '#document classification: positve/negative review -- NaiveBayesian ----'
 print '\t more: nltk.NaiveBayesClassifier.train(train_set) nltk.DecisionTreeClassifier.train()'
@@ -306,10 +308,176 @@ print '''\t performative statements such as "I forgive you" or "I bet you can't 
 
 print '\n ------ Recognizing textual entailment (RTE) is the task of determining whether a given piece of text T entails another text called the "hypothesis" (as already discussed in 5). To date, there have been four RTE Challenges'
 
-print '\n ------ chap 07 Extracting Information from Text --------'
+print '\n ------ chap 07 Extracting Information from Text --- STRUCTUREd here (chap 10, general)-----'
 print '''1. How can we build a system that extracts structured data, such as tables, from unstructured text?
 2. What are some robust methods for identifying the entities and relationships described in a text?
 3. Which corpora are appropriate for this work, and how do we use them for training and evaluating our models?'''
+print '\n -- 07.02 chunking -- \n\t Noun-Phrase(NP) -- simple regex chunker grammar \n\t tag pattern'
+
+#these POS tag are not easy to decide !!
+sentence = [("the", "DT"), ("little", "JJ"), ("yellow", "JJ"),
+            ("dog", "NN"), ("barked", "VBD"), ("at", "IN"),  ("the", "DT"), ("cat", "NN")]
+sent1 = [ ('another', 'DT'), ('sharp', 'JJ'), ('dive', 'NN'),
+	('trade','NN'), ('figures','NNS'),
+	('any','DT'), ('new','JJ'), ('policy','NN'), ('measures','NNS'),
+	('earlier','JJR'),  ('stages','NNS'),
+	('Panamanian','JJ'), ('dictator','NN'), ('Manuel','NNP'), ('Noriega','NNP') ]
+grammar = "NP: {<DT>?<JJ>*<NN>}"
+cp = nltk.RegexpParser(grammar)
+print cp.parse(sentence)
+cp1 = nltk.RegexpParser("NP: {<DT>?<JJ.*>*<NN.*>+}")
+print cp1.parse(sent1)
+
+#more grammar regex
+grammar = r"""
+  NP: {<DT|PP\$>?<JJ>*<NN>}   # chunk determiner/possessive, adjectives and noun
+      {<NNP>+}                # chunk sequences of proper nouns
+"""
+cp = nltk.RegexpParser(grammar)
+sentence = [("Rapunzel", "NNP"), ("let", "VBD"), ("down", "RP"),
+                 ("her", "PP$"), ("long", "JJ"), ("golden", "JJ"), ("hair", "NN")]
+print cp.parse(sentence)
+
+grammar = r"""
+  NP:
+    {<.*>+}          # Chunk everything
+    }<VBD|IN>+{      # Chink sequences of VBD and IN
+  """
+sentence = [("the", "DT"), ("little", "JJ"), ("yellow", "JJ"),
+       ("dog", "NN"), ("barked", "VBD"), ("at", "IN"),  ("the", "DT"), ("cat", "NN")]
+cp = nltk.RegexpParser(grammar)
+print(cp.parse(sentence))
+
+text = '''
+he PRP B-NP
+accepted VBD B-VP
+the DT B-NP
+position NN I-NP
+of IN B-PP
+vice NN B-NP
+chairman NN I-NP
+of IN B-PP
+Carlyle NNP B-NP
+Group NNP I-NP
+, , O
+a DT B-NP
+merchant NN I-NP
+banking NN I-NP
+concern NN I-NP
+. . O
+'''
+#nltk.chunk.conllstr2tree(text, chunk_types=['NP']).draw()
+print 'draw sentence tree: skipped'
+print('training text:', conll2000.chunked_sents('train.txt')[99])
+
+#recursive grammar, vs full parsing
+grammar = r"""
+  NP: {<DT|JJ|NN.*>+}          # Chunk sequences of DT, JJ, NN
+  PP: {<IN><NP>}               # Chunk prepositions followed by NP
+  VP: {<VB.*><NP|PP|CLAUSE>+$} # Chunk verbs and their arguments
+  CLAUSE: {<NP><VP>}           # Chunk NP, VP
+  """
+cp = nltk.RegexpParser(grammar)
+sentence = [("Mary", "NN"), ("saw", "VBD"), ("the", "DT"), ("cat", "NN"),
+    ("sit", "VB"), ("on", "IN"), ("the", "DT"), ("mat", "NN")]
+print(cp.parse(sentence))
+
+sentence = [("John", "NNP"), ("thinks", "VBZ"), ("Mary", "NN"),
+    ("saw", "VBD"), ("the", "DT"), ("cat", "NN"), ("sit", "VB"),
+    ("on", "IN"), ("the", "DT"), ("mat", "NN")]
+print(cp.parse(sentence))
+cp = nltk.RegexpParser(grammar, loop=2)
+print(cp.parse(sentence))
+
+#tree
+tree1 = nltk.Tree('NP', ['Alice'])
+tree2 = nltk.Tree('NP', ['the', 'rabbit'])
+tree3 = nltk.Tree('VP', ['chased', tree2])
+tree4 = nltk.Tree('S', [tree1, tree3])
+print(tree4)
+
+def traverse(t):
+    try:
+        t.label()
+    except AttributeError:
+        print(t+ " ")
+    else:
+        # Now we know that t.node is defined
+        print('(' + t.label()+ " ")
+        for child in t:
+            traverse(child)
+        print(')'+ " ")
+
+#t = nltk.Tree('(S (NP Alice) (VP chased (NP the rabbit)))')
+t = tree4
+traverse(t)
+
+print '\n ---- identify named entity recognition (NER) ------'
+print '\t May and North are likely to be parts of named entities for DATE and LOCATION, respectively, but could both be part of a PERSON; conversely Christian Dior looks like a PERSON but is more likely to be of type ORGANIZATION.'
+sent = nltk.corpus.treebank.tagged_sents()[22]
+print(' '.join(str(nltk.ne_chunk(sent, binary=True)).split()))
+print(' '.join(str(nltk.ne_chunk(sent)).split()))
+
+print '\n ----------  relation extraction -------------'
+IN = re.compile(r'.*\bin\b(?!\b.+ing)')
+for doc in nltk.corpus.ieer.parsed_docs('NYT_19980315'):
+    for rel in nltk.sem.extract_rels('ORG', 'LOC', doc,
+                                     corpus='ieer', pattern = IN):
+        print(nltk.sem.rtuple(rel))
+
+print '\n ----- chap 08 Analyzing Sentence Structure -------------------'
+print '\tHaving read in a text, can a program "understand" it enough to be able to answer simple questions about "what happened" or "who did what to whom"?'
+groucho_grammar = nltk.CFG.fromstring("""
+S -> NP VP
+PP -> P NP
+NP -> Det N | Det N PP | 'I'
+VP -> V NP | VP PP
+Det -> 'an' | 'my'
+N -> 'elephant' | 'pajamas'
+V -> 'shot'
+P -> 'in'
+""")
+sent = ['I', 'shot', 'an', 'elephant', 'in', 'my', 'pajamas']
+parser = nltk.ChartParser(groucho_grammar)
+for tree in parser.parse(sent):
+    print(tree)
+
+print '\n--- ## use syntax to parse sentence: Content Free Grammar##'
+grammar1 = nltk.CFG.fromstring("""
+  S -> NP VP
+  VP -> V NP | V NP PP
+  PP -> P NP
+  V -> "saw" | "ate" | "walked"
+  NP -> "John" | "Mary" | "Bob" | Det N | Det N PP
+  Det -> "a" | "an" | "the" | "my"
+  N -> "man" | "dog" | "cat" | "telescope" | "park"
+  P -> "in" | "on" | "by" | "with"
+  """)
+# grammar1 = nltk.data.load('file:mygrammar.cfg') load it from disk file
+sent = "Mary saw Bob".split()
+rd_parser = nltk.RecursiveDescentParser(grammar1)
+for tree in rd_parser.parse(sent):
+     print(tree)
+
+
+grammar2 = nltk.CFG.fromstring("""
+  S  -> NP VP
+  NP -> Det Nom | PropN
+  Nom -> Adj Nom | N
+  VP -> V Adj | V NP | V S | V NP PP
+  PP -> P NP
+  PropN -> 'Buster' | 'Chatterer' | 'Joe'
+  Det -> 'the' | 'a'
+  N -> 'bear' | 'squirrel' | 'tree' | 'fish' | 'log'
+  Adj  -> 'angry' | 'frightened' |  'little' | 'tall'
+  V ->  'chased'  | 'saw' | 'said' | 'thought' | 'was' | 'put'
+  P -> 'on'
+  """)
+sent = "the angry bear chased the frightened little squirrel".split()
+rd_parser = nltk.RecursiveDescentParser(grammar2)
+for tree in rd_parser.parse(sent):
+     print(tree)
+
 
 
 sys.exit(0) #done following test
