@@ -295,6 +295,22 @@ going	gerund	VBG
 went	simple past	VBD'''
 
 print '\n---- text classification ---un*/supervised------'
+print '#feature extraction'
+print '#document classification: positve/negative review -- NaiveBayesian ----'
+print '\t more: nltk.NaiveBayesClassifier.train(train_set) nltk.DecisionTreeClassifier.train()'
+print '\t More:--  Sequence Classification (greedy?) Seq-Score?'
+
+print '\n -- Sentence segementation --, diaglogue act type'
+print '\t 15 dialogue act types, such as "Statement," "Emotion," "ynQuestion", and "Continuer."'
+print '''\t performative statements such as "I forgive you" or "I bet you can't climb that hill." But greetings, questions, answers, assertions, and clarifications can all be thought of as types of speech-based actions.'''
+
+print '\n ------ Recognizing textual entailment (RTE) is the task of determining whether a given piece of text T entails another text called the "hypothesis" (as already discussed in 5). To date, there have been four RTE Challenges'
+
+print '\n ------ chap 07 Extracting Information from Text --------'
+print '''1. How can we build a system that extracts structured data, such as tables, from unstructured text?
+2. What are some robust methods for identifying the entities and relationships described in a text?
+3. Which corpora are appropriate for this work, and how do we use them for training and evaluating our models?'''
+
 
 sys.exit(0) #done following test
 

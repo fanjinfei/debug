@@ -600,7 +600,7 @@ else:
     main()
 
 #search daily compare, keywords
-#0. CPI (daily)
+#0. CPI (daily), "11-627-M"
 #1. "consumer price index" 2018
 #    http://www120.statcan.gc.ca/stcsr/en/sr1/srs?start=0&showSum=hide&fq=&enableElevation=true&fq=stclac%3A2&q=%22consumer+price+index%22+ds%3Adaily*+2018&sort=score+desc
 #    http://f7wcmstestb2.statcan.ca:8001/en/ecn_search?sub=daily&q=%22consumer+price+index%22+2018&sort=
