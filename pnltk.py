@@ -9,6 +9,7 @@ from nltk.corpus import wordnet as wn #wordnet
 from nltk.corpus import gutenberg, nps_chat
 from nltk.corpus import brown
 from nltk.corpus import conll2000
+from nltk.corpus import treebank
 #from urllib import request
 import requests
 import networkx as nx
@@ -478,7 +479,114 @@ rd_parser = nltk.RecursiveDescentParser(grammar2)
 for tree in rd_parser.parse(sent):
      print(tree)
 
+print '\n------- Parser with CFG -- recursive-descent vs shitft-reduce vs Left-Corner  vs chart-parsing(WFST) ----'
+print '\t well formed substring table '
+rd_parser = nltk.RecursiveDescentParser(grammar1)
+sent = 'Mary saw a dog'.split()
+for tree in rd_parser.parse(sent):
+    print(tree)
 
+sr_parser = nltk.ShiftReduceParser(grammar1)
+sent = 'Mary saw a dog'.split()
+for tree in sr_parser.parse(sent):
+    print(tree)
+
+text = ['I', 'shot', 'an', 'elephant', 'in', 'my', 'pajamas']
+print groucho_grammar.productions(rhs=text[1])
+
+def init_wfst(tokens, grammar):
+    numtokens = len(tokens)
+    wfst = [[None for i in range(numtokens+1)] for j in range(numtokens+1)]
+    for i in range(numtokens):
+        productions = grammar.productions(rhs=tokens[i])
+        wfst[i][i+1] = productions[0].lhs()
+    return wfst
+
+def complete_wfst(wfst, tokens, grammar, trace=False):
+    index = dict((p.rhs(), p.lhs()) for p in grammar.productions())
+    numtokens = len(tokens)
+    for span in range(2, numtokens+1):
+        for start in range(numtokens+1-span):
+            end = start + span
+            for mid in range(start+1, end):
+                nt1, nt2 = wfst[start][mid], wfst[mid][end]
+                if nt1 and nt2 and (nt1,nt2) in index:
+                    wfst[start][end] = index[(nt1,nt2)]
+                    if trace:
+                        print("[%s] %3s [%s] %3s [%s] ==> [%s] %3s [%s]" % \
+                        (start, nt1, mid, nt2, end, start, index[(nt1,nt2)], end))
+    return wfst
+'''
+def display(wfst, tokens):
+    print('\nWFST ' + ' '.join(("%-4d" % i) for i in range(1, len(wfst))))
+    for i in range(len(wfst)-1):
+        print("%d   " % i, end=" ")
+        for j in range(1, len(wfst)):
+            print("%-4s" % (wfst[i][j] or '.'), end=" ")
+        print()
+tokens = "I shot an elephant in my pajamas".split()
+wfst0 = init_wfst(tokens, groucho_grammar)
+display(wfst0, tokens)
+
+wfst1 = complete_wfst(wfst0, tokens, groucho_grammar, trace=True)
+'''
+
+print '\n ---- dependency grammar --- GRAPH --'
+groucho_dep_grammar = nltk.DependencyGrammar.fromstring("""
+'shot' -> 'I' | 'elephant' | 'in'
+'elephant' -> 'an' | 'in'
+'in' -> 'pajamas'
+'pajamas' -> 'my'
+""")
+print(groucho_dep_grammar)
+
+pdp = nltk.ProjectiveDependencyParser(groucho_dep_grammar)
+sent = 'I shot an elephant in my pajamas'.split()
+trees = pdp.parse(sent)
+for tree in trees:
+    print(tree)
+
+print '\n --- Large scale grammar projects: the Lexical Functional Grammar (LFG) Pargram project, the Head-Driven Phrase Structure Grammar (HPSG) LinGO Matrix framework, and the Lexicalized Tree Adjoining Grammar XTAG Project. ---'
+
+print '\n --- traning data to develop your own grammar ----'
+t = treebank.parsed_sents('wsj_0001.mrg')[0]
+print(t)
+
+def filter(tree):
+    child_nodes = [child.label() for child in tree
+                   if isinstance(child, nltk.Tree)]
+    return  (tree.label() == 'VP') and ('S' in child_nodes)
+print [subtree for tree in treebank.parsed_sents()
+         for subtree in tree.subtrees(filter)][:2]
+
+print '\n--- handle pernicious ambiguity -(structure + lexical)--'
+grammar = nltk.CFG.fromstring("""
+S -> NP V NP
+NP -> NP Sbar
+Sbar -> NP V
+NP -> 'fish'
+V -> 'fish'
+""")
+tokens = ["fish"] * 5
+cp = nltk.ChartParser(grammar)
+for tree in cp.parse(tokens):
+    print(tree)
+
+ 	
+grammar = nltk.PCFG.fromstring("""
+S    -> NP VP              [1.0]
+VP   -> TV NP              [0.4]
+VP   -> IV                 [0.3]
+VP   -> DatV NP NP         [0.3]
+TV   -> 'saw'              [1.0]
+IV   -> 'ate'              [1.0]
+DatV -> 'gave'             [1.0]
+NP   -> 'telescopes'       [0.8]
+NP   -> 'Jack'             [0.2]
+""")
+viterbi_parser = nltk.ViterbiParser(grammar)
+for tree in viterbi_parser.parse(['Jack', 'saw', 'telescopes']):
+   print(tree)
 
 sys.exit(0) #done following test
 

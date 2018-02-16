@@ -187,7 +187,7 @@ class Doc():
             iname = item.get('name', None)
             if not iname: continue
             iname = iname.lower()
-            if iname in ['date', 'dcterms.modifed', 'dcterms.issued']:
+            if iname in ['date', 'dcterms.modifed', 'dcterms:modifed', 'dcterms.issued']:
                 return item['content']
         return None
 
