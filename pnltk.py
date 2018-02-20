@@ -5,6 +5,8 @@ import nltk, sys
 import re
 import pprint
 from nltk import word_tokenize
+from nltk import load_parser
+
 from nltk.corpus import wordnet as wn #wordnet
 from nltk.corpus import gutenberg, nps_chat
 from nltk.corpus import brown
@@ -587,6 +589,48 @@ NP   -> 'Jack'             [0.2]
 viterbi_parser = nltk.ViterbiParser(grammar)
 for tree in viterbi_parser.parse(['Jack', 'saw', 'telescopes']):
    print(tree)
+
+
+print '\n---- chap 09 Feature based Grammar -----------'
+print '''Here we can see that morphological properties of the verb co-vary with syntactic properties of the subject noun phrase. This co-variance is called agreement. If we look further at verb agreement in English, we will see that present tense verbs typically have two inflected forms: one for third person singular, and another for every other combination of person and number, as shown in 1.1.
+
+Table 1.1:
+
+Agreement Paradigm for English Regular Verbs
+
+ 	singular	plural
+1st per	I run	we run
+2nd per	you run	you run
+3rd per	he/she/it runs	they run
+'''
+print nltk.data.show_cfg('grammars/book_grammars/feat0.fcfg')
+tokens = 'Kim likes children'.split()
+cp = load_parser('grammars/book_grammars/feat0.fcfg', trace=2)
+for tree in cp.parse(tokens):
+    print(tree)
+
+fs1 = nltk.FeatStruct(TENSE='past', NUM='sg')
+fs2 = nltk.FeatStruct(PER=3, NUM='pl', GND='fem')
+fs2 = nltk.FeatStruct(POS='N', AGR=fs2)
+print (fs1, fs2, fs3, fs3['AGR']['PER']))
+
+print '''\n---- Auxiliary Verbs and Inversion
+Inverted clauses — where the order of subject and verb is switched — occur in English interrogatives and also after 'negative' adverbs:
+(37)		
+a.		Do you like children?
+b.		Can Jody walk?
+(38)		
+a.		Rarely do you see Kim.
+b.		Never have I seen this dog.
+S[+INV] -> V[+AUX] NP VP
+Compared with English, German has a relatively rich morphology for agreement. For example, the definite article in German varies with case, gender and number, as shown in 3.1.
+'''
+print nltk.data.show_cfg('grammars/book_grammars/feat1.fcfg')
+
+print '\n----- chap 10 ---- Meaning of sentence ---'
+print '\t send2sql mapping'
+
+
 
 sys.exit(0) #done following test
 

@@ -12,6 +12,7 @@ import pprint
 
 from fusionpy.fusion import Fusion
 from fusionpy.connectors import FusionRequester, HttpFusionRequester
+from fusionpy.fusioncollection import FusionIndexPipeline
 from fusionpy import FusionError
 
 '''bash
@@ -104,6 +105,19 @@ class stc_fusion():
                 with open(fname2, 'wb') as f2:
                     f2.write(js.encode('utf-8'))
             f.write(json.dumps(stage))
+
+    def del_index_pipeline(self):
+	pl = self.fu.get_index_pipeline('clsconnsolr_dup')
+        config = {}
+        config['id'] = 'clsconnsolr_dup'
+        pl.delete_config(config)
+
+    def dup_index_pipeline(self):
+	pl = self.fu.get_index_pipeline('clsconnsolr') #do not know yet
+        config =  pl.get_config()
+        config['id']  = 'cannabisconn'
+        new_pipeline = FusionIndexPipeline(self.fu, config['id'])
+        new_pipeline.create_config(config)
 
     def get_index_pipeline_list(self):
 	pl = self.fu.get_index_pipeline('') #do not know yet
@@ -207,9 +221,11 @@ def main():
     sf = stc_fusion(fu)
 
     #sf.hist()
-    sf.ds_hosts()
+    #sf.ds_hosts()
     #sf.get_index_pipeline_list()
     #sf.test()
+    #sf.dup_index_pipeline()
+    #sf.del_index_pipeline()
 
 if __name__ == '__main__':
 	main()

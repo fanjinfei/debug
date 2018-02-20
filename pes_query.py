@@ -6,6 +6,8 @@ from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
 from elasticsearch_dsl import DocType, Date, Integer, Keyword, Text, connections
 
+#use Elastic search query builder
+
 #modify following es query to support decay function
 def dsl_search():
     client = Elasticsearch('localhost:9200')
@@ -214,3 +216,220 @@ es = Elasticsearch([{'host': 'localhost', 'port': int(sys.argv[1])}])
 r = es.search(index="fess.20180125", body=body)
 print (r)
 
+
+# "dGltZXN0YW1wOltub3ctN2QvZCBUTyAqXQ==" base64 decode to "timestamp:[now-7d/d TO *]"
+'''
+{
+  "from": 30,
+  "size": 1,
+  "timeout": "10000ms",
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "function_score": {
+            "query": {
+              "bool": {
+                "should": [
+                  {
+                    "match_phrase": {
+                      "title": {
+                        "query": "consumer+price+index",
+                        "slop": 0,
+                        "boost": 0.2
+                      }
+                    }
+                  },
+                  {
+                    "match_phrase": {
+                      "content": {
+                        "query": "consumer+price+index",
+                        "slop": 0,
+                        "boost": 0.1
+                      }
+                    }
+                  },
+                  {
+                    "match_phrase": {
+                      "title_en": {
+                        "query": "consumer+price+index",
+                        "slop": 0,
+                        "boost": 1
+                      }
+                    }
+                  },
+                  {
+                    "match_phrase": {
+                      "content_en": {
+                        "query": "consumer+price+index",
+                        "slop": 0,
+                        "boost": 0.5
+                      }
+                    }
+                  }
+                ],
+                "disable_coord": false,
+                "adjust_pure_negative": true,
+                "boost": 1
+              }
+            },
+            "functions": [
+              {
+                "filter": {
+                  "match_all": {
+                    "boost": 1
+                  }
+                },
+                "field_value_factor": {
+                  "field": "boost",
+                  "factor": 1,
+                  "modifier": "none"
+                }
+              }
+            ],
+            "score_mode": "multiply",
+            "max_boost": 3.4028235e+38,
+            "boost": 1
+          }
+        }
+      ],
+      "filter": [
+        {
+          "bool": {
+            "should": [
+              {
+                "term": {
+                  "role": {
+                    "value": "1guest",
+                    "boost": 1
+                  }
+                }
+              },
+              {
+                "term": {
+                  "role": {
+                    "value": "Rguest",
+                    "boost": 1
+                  }
+                }
+              }
+            ],
+            "disable_coord": false,
+            "adjust_pure_negative": true,
+            "boost": 1
+          }
+        }
+      ],
+      "disable_coord": false,
+      "adjust_pure_negative": true,
+      "boost": 1
+    }
+  },
+  "_source": {
+    "includes": [
+      "score",
+      "_id",
+      "doc_id",
+      "boost",
+      "content_length",
+      "host",
+      "site",
+      "last_modified",
+      "timestamp",
+      "mimetype",
+      "filetype",
+      "filename",
+      "created",
+      "title",
+      "digest",
+      "url",
+      "thumbnail",
+      "click_count",
+      "favorite_count",
+      "config_id",
+      "lang",
+      "has_cache",
+      "lang"
+    ],
+    "excludes": [
+      
+    ]
+  },
+  "aggregations": {
+    "query:dGltZXN0YW1wOltub3ctN2QvZCBUTyAqXQ==": { 
+      "filter": {
+        "range": {
+          "timestamp": {
+            "from": "now-7d\/d",
+            "to": null,
+            "include_lower": true,
+            "include_upper": true,
+            "boost": 1
+          }
+        }
+      }
+    },
+    "query:dGltZXN0YW1wOltub3ctMXkvZCBUTyAqXQ==": {
+      "filter": {
+        "range": {
+          "timestamp": {
+            "from": "now-1y\/d",
+            "to": null,
+            "include_lower": true,
+            "include_upper": true,
+            "boost": 1
+          }
+        }
+      }
+    },
+    "query:dGltZXN0YW1wOltub3ctMWQvZCBUTyAqXQ==": {
+      "filter": {
+        "range": {
+          "timestamp": {
+            "from": "now-1d\/d",
+            "to": null,
+            "include_lower": true,
+            "include_upper": true,
+            "boost": 1
+          }
+        }
+      }
+    },
+    "query:dGltZXN0YW1wOltub3ctMzBkL2QgVE8gKl0=": {
+      "filter": {
+        "range": {
+          "timestamp": {
+            "from": "now-30d\/d",
+            "to": null,
+            "include_lower": true,
+            "include_upper": true,
+            "boost": 1
+          }
+        }
+      }
+    },
+    "query:dGltZXN0YW1wOlsqIFRPIG5vdy0xeS0xZC9kXQ==": {
+      "filter": {
+        "range": {
+          "timestamp": {
+            "from": null,
+            "to": "now-1y-1d\/d",
+            "include_lower": true,
+            "include_upper": true,
+            "boost": 1
+          }
+        }
+      }
+    }
+  },
+  "highlight": {
+    "fields": {
+      "content": {
+        "fragment_size": 50,
+        "number_of_fragments": 5,
+        "type": "fvh"
+      }
+    }
+  }
+}
+'''
