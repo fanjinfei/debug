@@ -1,6 +1,44 @@
-'''
+
+import sys
+import json
+
+from elasticsearch import Elasticsearch
+from elasticsearch_dsl import Search
+from elasticsearch_dsl import DocType, Date, Integer, Keyword, Text, connections
+
+#modify following es query to support decay function
+def dsl_search():
+    client = Elasticsearch('localhost:9200')
+
+    s = Search(using=client, index="my-index") \
+        .filter("term", category="search") \
+        .query("match", title="python")   \
+        .exclude("match", description="beta")
+
+#override connection
+#s = s.using(Elasticsearch('otherhost:9200'))
+
+    s.aggs.bucket('per_tag', 'terms', field='tags') \
+        .metric('max_lines', 'max', field='lines')
+
+    body = s.to_dict()
+    print (body)
+    return
+
+    response = s.execute()
+
+    for hit in response:
+        print(hit.meta.score, hit.title)
+
+    for tag in response.aggregations.per_tag.buckets:
+        print(tag.key, tag.max_lines.value)
+
+dsl_search()
+sys.exit(0)
+
+body='''
 {
-  "from" : 30000,
+  "from" : 1000,
   "size" : 20,
   "timeout" : "10000ms",
   "query" : {
@@ -166,3 +204,13 @@
   }
 }
 '''
+body = json.loads(body)
+s = Search.from_dict(body)
+body = s.to_dict()
+
+client = Elasticsearch('localhost:'+sys.argv[1])
+
+es = Elasticsearch([{'host': 'localhost', 'port': int(sys.argv[1])}])
+r = es.search(index="fess.20180125", body=body)
+print (r)
+
