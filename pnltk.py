@@ -611,8 +611,8 @@ for tree in cp.parse(tokens):
 
 fs1 = nltk.FeatStruct(TENSE='past', NUM='sg')
 fs2 = nltk.FeatStruct(PER=3, NUM='pl', GND='fem')
-fs2 = nltk.FeatStruct(POS='N', AGR=fs2)
-print (fs1, fs2, fs3, fs3['AGR']['PER']))
+fs3 = nltk.FeatStruct(POS='N', AGR=fs2)
+print (fs1, fs2, fs3, fs3['AGR']['PER'])
 
 print '''\n---- Auxiliary Verbs and Inversion
 Inverted clauses — where the order of subject and verb is switched — occur in English interrogatives and also after 'negative' adverbs:
@@ -629,7 +629,80 @@ print nltk.data.show_cfg('grammars/book_grammars/feat1.fcfg')
 
 print '\n----- chap 10 ---- Meaning of sentence ---'
 print '\t send2sql mapping'
+print '\tNatural Language(parsing), Semantics and Logic (first-order/predicates, f=evaluate()) ---\n'
+print '\t -- Propositional logic (boolean) - & | -> <->--'
+read_expr = nltk.sem.Expression.fromstring
+print read_expr('-(P & Q)')
+print read_expr('P & Q')
 
+val = nltk.Valuation([('P', True), ('Q', True), ('R', False)])
+dom = set()
+g = nltk.Assignment(dom)
+m = nltk.Model(dom, val)
+print(m.evaluate('(P & Q)', g))
+print(m.evaluate('-(P & Q)', g))
+print(m.evaluate('(P & R)', g))
+print(m.evaluate('(P | R)', g))
+
+SnF = read_expr('SnF')
+NotFnS = read_expr('-FnS')
+R = read_expr('SnF -> -FnS')
+prover = nltk.Prover9()
+print prover.prove(NotFnS, [SnF, R])
+
+print '\n---- first order logic ----'
+expr = read_expr('walk(angus)', type_check=True)
+print expr.argument
+print expr.argument.type
+print expr.function
+print expr.function.type
+
+print '''\t an occurrence of a variable x in a formula φ is free in φ if that occurrence doesn't fall within the scope of all x or some x in φ'''
+print read_expr('dog(cyril)').free()
+print read_expr('dog(x)').free()
+print read_expr('own(angus, cyril)').free()
+print read_expr('exists x.dog(x)').free()
+print read_expr('((some x. walk(x)) -> sing(x))').free()
+print read_expr('exists x.own(y, x)').free()
+
+print '''\n--\n Summary of new logical relations and operators required for First Order Logic, together with two useful methods of the Expression class.
+
+Example	Description
+=	equality
+!=	inequality
+exists	existential quantifier
+all	universal quantifier
+e.free()	show free variables of e
+e.simplify()	carry out β-reduction on e
+'''
+
+print '\n--- Compositional Semantics in Feature-Based Grammar of English Sentence ---'
+print '\t Principle of Compositionality: The meaning of a whole is a function of the meanings of the parts and of the way they are syntactically combined.'
+print '\t with the λ operator (pronounced "lambda") --\n\tλ expressions were originally designed by Alonzo Church to represent computable functions and to provide a foundation for mathematics and logic. The theory in which λ expressions are studied is known as the λ-calculus. Note that the λ-calculus is not part of first-order logic — both can be used independently of the other.'
+expr = read_expr(r'\x.(walk(x) & chew_gum(x))(gerald)')
+print(expr)
+print(expr.simplify())
+
+print '\n-- Quantified NPs -- No program example here'
+print u'''
+At the start of this section, we briefly described how to build a semantic representation for Cyril barks. You would be forgiven for thinking this was all too easy — surely there is a bit more to building compositional semantics. What about quantifiers, for instance? Right, this is a crucial issue. For example, we want (42a) to be given the logical form in (42b). How can this be accomplished?
+(42)		
+a.		A dog barks.
+b.		exists x.(dog(x) & bark(x))
+
+Let's make the assumption that our only operation for building complex semantic representations is function application. Then our problem is this: how do we give a semantic representation to the quantified NPs a dog so that it can be combined with bark to give the result in (42b)? As a first step, let's make the subject's sem value act as the function expression rather than the argument. (This is sometimes called type-raising.) Now we are looking for way of instantiating ?np so that [SEM=<?np(\\x.bark(x))>] is equivalent to  [SEM=<exists x.(dog(x) & bark(x))>]. Doesn't this look a bit reminiscent of carrying out β-reduction in the λ-calculus? In other words, we want a λ term M to replace ?np so that applying M to 'bark' yields (42b). To do this, we replace the occurrence of 'bark' in (42b) by a predicate variable 'P', and bind the variable with λ, as shown in (43).
+
+(43)		\P.exists x.(dog(x) & P(x))
+
+We have used a different style of variable in (43) — that is 'P' rather than 'x' or 'y' — to signal that we are abstracting over a different kind of object — not an individual, but a function expression of type 〈e, t〉. So the type of (43) as a whole is 〈〈e, t〉, t〉. We will take this to be the type of NPs in general. To illustrate further, a universally quantified NP will look like (44).
+
+(44)		\P.all x.(dog(x) -> P(x))
+
+We are pretty much done now, except that we also want to carry out a further abstraction plus application for the process of combining the semantics of the determiner a, namely (43), with the semantics of dog.
+
+(45)		\Q P.exists x.(Q(x) & P(x))
+Applying (46) as a function expression to dog yields (43), and applying that to bark gives us \P.exists x.(dog(x) & P(x))(\\x.bark(x)). Finally, carrying out β-reduction yields just what we wanted, namely (42b).
+'''
 
 
 sys.exit(0) #done following test
