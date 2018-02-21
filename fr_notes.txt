@@ -1,3 +1,4 @@
+1. keyboard input
 è ë, ï, é, ü, ô, ç, ñ, å,
  Windows, there is a better solution: switch the keyboard layout to US-international and then type [`] followed by [a] to display [à]. Still on Windows, the software EasyType makes it even easier: press once [e] to get [e], twice [e] to get [é], three times [e] to get [è]...
 Input method in Ubuntu 16.04: select "French (Canada)" keyboard layout, the following key's are french.
@@ -9,6 +10,7 @@ Input method in Ubuntu 16.04: select "French (Canada)" keyboard layout, the foll
 ^ + e --> ê  
 The above special char (press twice it shows itself).
 
+2. Phrase
 Je m'appelle - My name is
 s'il vois plait -- please
 enchanté(e) -- nice to meet you, pleased to meet you
@@ -16,3 +18,15 @@ suis -- am (conjugated form of être)
 appelez-moi -- call me (formal singual or plural form)
 je/j' -- I
 Mademoiselle -- Miss
+garçon -- boy
+fille -- girl
+masions -- houses
+
+3. Gender Masculine vs feminine, Plural
+  Le, La, Les -- The in Engish
+  Un, Une, Des -- A/Some in English
+    Example: Le/Un garçon, La/Une fille, Les/Des masions
+  If the noun begins with a vowel or letter 'H', the article drops the letter 'e' or 'a'.
+    L'oiseau -- A bird
+    L'éléphant -- An elephant
+    L'hérisson -- A hedgedog
