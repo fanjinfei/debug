@@ -23,10 +23,57 @@ fille -- girl
 masions -- houses
 
 3. Gender Masculine vs feminine, Plural
+  https://frenchtogether.com/french-nouns-gender/
+
   Le, La, Les -- The in Engish
-  Un, Une, Des -- A/Some in English
+  Un, Une, Des -- A/Some in English, "du", "de la"?
     Example: Le/Un garçon, La/Une fille, Les/Des masions
+
   If the noun begins with a vowel or letter 'H', the article drops the letter 'e' or 'a'.
     L'oiseau -- A bird
     L'éléphant -- An elephant
     L'hérisson -- A hedgedog
+
+  It has an influence on:
+    The article you use before a noun
+    Pronouns:
+      He = il
+      She = elle
+      They = Ils, 
+             Elles
+    The ending of adjectives(based on noun's gender and singular/plural) and verbs:
+      Lexicon:        his       her        their(male)  their(female)
+      Content(happy): content,  contente,  contents,    contentes
+      Fatigué (tired):fatigué   fatiguée   fatigués     fatiguées
+      Bon(good):      bon       bonne      bons         bonnes
+      Triste(sad):    triste    triste     tristes      tristes
+
+    The passé composé tense is the most striking example of the influence of genders and number on conjugation.
+    Conjugation: Conjugated verbs are verbs which have been changed to communicate one or more of the following: person, number, gender, tense, aspect, mood, or voice. 
+      http://grammar.yourdictionary.com/parts-of-speech/verbs/what-is-a-conjugated-verb.html
+        Present Simple: I, You, We, They: break
+                        He, She, It: breaks
+
+        Present Continuous (Progressive): I: am breaking
+                                          You, We, They: are breaking
+                                           He, She, It: is breaking
+
+        Present Perfect: I, You, We, They: have broken
+                         He, She, It: has broken
+
+        Past Simple: I, You, We, They, He, She, It: broke
+
+        Past Continuous: I, He, She, It: was breaking
+                         You, We, They: were breaking
+
+        Past Perfect: I, You, We, They, He, She, It: had broken
+    Je suis allé(e)
+    Tu es allé(e)
+    Il/elle est allé(e)
+    Nous sommes allé(e)s
+    Vous êtes allé(e)(s)
+    Ils/elles sont allé(e)s
+
+  80% Accuracy: Feminine noun endings
+    The majority of words that end in -e or -ion.
+    Except words ending in -age, -ege, -é, or -isme (these endings often indicate masculine words).
