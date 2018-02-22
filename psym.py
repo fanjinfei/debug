@@ -1,8 +1,11 @@
+from __future__ import division
 from sympy import *
 from sympy import symbols
 from sympy import expand, factor
 import math
 import numpy 
+
+init_printing(use_unicode=True)
 
 x = symbols('x')
 a = Integral(cos(x)*exp(x), x)
@@ -89,6 +92,20 @@ print simplify(gamma(x)/gamma(x - 2))
 
 #expand
 print expand((x + 1)**2)
+
+print factor(x**2*z + 4*x*y*z + 4*y**2*z)
+
+#Trigonometric Simplification
+print   'Trigonometric Simplification',cos(acos(x))
+print 'rewrite', tan(x).rewrite(sin)
+print 'simplify combinatorial expressions', combsimp(factorial(n)/factorial(n - 3))
+
+#Calculus
+
+
+
+
+
 
 
 
