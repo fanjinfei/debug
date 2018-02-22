@@ -27,6 +27,7 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from url_filters import daily_filter, daily_archive_filter, daily_latest_filter
+from crawler_base import write_csv
 
 def get_web_html(s, url):
     user_agent = {'User-agent': 'statcan dev crawler; abuse report jinfei.fan@canada.ca'}
@@ -47,16 +48,6 @@ def get_web_html(s, url):
         return u'\n'.join(rtext)
     else:
         return None
-
-def write_csv(filename, rows, header=None):
-    outf=open(filename, 'wb')
-    outf.write(codecs.BOM_UTF8)
-    writer = unicodecsv.writer(outf, delimiter='\t')
-
-    if header:
-        writer.writerow(header)
-    for row in rows:
-        writer.writerow(row)
 
 def filter_stopindex(content):
     stop = '<!--stopindex-->'
