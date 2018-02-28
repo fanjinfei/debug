@@ -704,6 +704,19 @@ We are pretty much done now, except that we also want to carry out a further abs
 Applying (46) as a function expression to dog yields (43), and applying that to bark gives us \P.exists x.(dog(x) & P(x))(\\x.bark(x)). Finally, carrying out β-reduction yields just what we wanted, namely (42b).
 '''
 
+expr3 = read_expr('\P.(exists x.P(x))(\y.see(y, x))')
+print(expr3)
+print(expr3.simplify())
+
+print '\n----- Discourse structure ----'
+print '\tFOL: alpha conversion, Beta reduction, Eta conversion/reduction'
+print '\tAlpha;  (λx.xx)(λx.x) -> (λx.xx)(λy.y)'
+print '\tBeta: (λx.xy)z => xy'
+print '\tEta: λx.(f x) = f if f does not make use of x'
+
+dt = nltk.DiscourseTester(['A student dances', 'Every student is a person'])
+print dt.readings()
+
 
 sys.exit(0) #done following test
 

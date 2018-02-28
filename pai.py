@@ -33,16 +33,22 @@ Principle: No hard-code rules of parsing; no strict/consistent logic in sentence
   grammar -> syntax, tense, singluar/plural
   word -> grammar
   phrase -> grammar
-  sentance -> grammar
+  sentence -> grammar( FOL, quantifier)
+  Discourse(multi-sentence) -> space/time serials (Temporal Reasoning in Natural Language Processing)
+    anaphoric antecedent --> discourse referents: 
+    Cataphora (included in the broad sense of anaphora, species of endophora)
+       a. Because he was very cold, David put on his coat
+    Sarcasm
 
 2. training building blocks
   tagged samples -> rules (regex/function, dictionary)?
 
 3. build context
   samples -> word -> phrase ->sentence -> predicate -> (lambda + entities net)
-  Sympy.lambdify or lamby
+  Sympy.lambdify or lamby or self built FOL(first order logic) processor
+  How to handle time related context? (past, present, future, date, etc)
 
 4. output
-  apply strategy (dialogue/essay/summary) -> set of (lamda/entities) -> reduction -> formating
+  apply strategy (dialogue/essay/summary) -> set of (lamda/entities) -> reduction -> formating (NLG-generation)
 
 '''

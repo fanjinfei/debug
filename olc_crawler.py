@@ -16,12 +16,93 @@ import traceback
 import time
 from datetime import datetime
 
-from crawler_base import write_csv
+from crawler_base import write_csv, read_csv, read_jsonfile
 
+
+def clean_rec2(b,lan):
+    b = re.sub(r"\\\t", " ", b)
+    b = re.sub(r"\\\n", " ", b)
+    # b = re.sub(r"\\\"", " ", b)
+    ## b = re.sub(r"\\\"", ' &quot; ', b)
+    b = re.sub(r"\t", " ", b)
+    b = re.sub(r"\n", " ", b)
+    # b = re.sub(r"\[pubURLRoot\]", "www.statcan.gc.ca", b)
+    # b = b.encode('utf-8')
+    if b:
+        line = b
+        line = re.sub(r'<.{1,12}>', r'', line)
+        line = re.sub(r'("attr_strtitle": ")\\u00ab ', r'\1', line)
+        line = re.sub(r'\\\/', r'/', line)
+        #line = re.sub(r"'", r'&#8217;', line)
+        line = re.sub(r'\\u003C.{1,10}\\u003E', r'', line)
+        line = re.sub(r'"([a-zA-Z\-\_]+)":(["\[])', r'"\1_s":\2', line)
+        b = line
+    #b = re.sub(r"http\:\/\/\[pubURLRoot\]", "https://[pubURLRoot]", b)
+    #b = re.sub(r"https\:\/\/\[pubURLRoot\]", pdfdomain, b)
+    # repdomain = "https://stc-ndm-prod-pc.statcan.gc.ca/n1/" + lan
+    repdomain = "https://www150.statcan.gc.ca/n1/" + lan
+    b = re.sub(r"http\:\/\/\[pubURLRoot\]", "https://[pubURLRoot]", b)
+    b = re.sub(r"https\:\/\/\[pubURLRoot\]", repdomain, b)
+
+    # repdomain = "https://stc-ndm-prod-pc.statcan.gc.ca/n1/" + lan
+    repdomain = "https://www150.statcan.gc.ca/n1/" + lan
+    b = re.sub(r"http\:\/\/\[navURLSummaryRoot\]", "https://[navURLSummaryRoot]", b)
+    b = re.sub(r"https\:\/\/\[navURLRsummaryRoot\]", repdomain, b)
+
+    # repdomain = "https://stc-ndm-prod-pc.statcan.gc.ca/n1/" + lan
+    repdomain = "https://www150.statcan.gc.ca/n1/" + lan
+    b = re.sub(r"http\:\/\/\[dailyURLRoot\]", "https://[dailyURLRoot]", b)
+    b = re.sub(r"https\:\/\/\[dailyURLRoot\]", repdomain, b)
+
+    # repdomain = "https://stc-ndm-prod-pc.statcan.gc.ca/t1/" + lan
+    repdomain = "https://www150.statcan.gc.ca/t1/" + lan
+    b = re.sub(r"http\:\/\/\[tableviewURLRoot\]", "https://[tableviewURLRoot]", b)
+    b = re.sub(r"https\:\/\/\[tableviewURLRoot\]", repdomain, b)
+
+    #repdomain = "https://stc-ndm-prod-pc.statcan.gc.ca/t1/" + lan + "/catalogue/"
+    repdomain = "https://www150.statcan.gc.ca/t1/" + lan + "/catalogue/"
+    b = re.sub(r"http\:\/\/\[catalogueURLRoot_EN\]", "https://[catalogueURLRoot_EN]", b)
+    b = re.sub(r"https\:\/\/\[catalogueURLRoot_EN\]", repdomain, b)
+    b = re.sub(r"http\:\/\/\[catalogueURLRoot_FR\]", "https://[catalogueURLRoot_FR]", b)
+    b = re.sub(r"https\:\/\/\[catalogueURLRoot_FR\]", repdomain, b)
+
+    return b
+
+def clean_rec(b):
+    b = re.sub(r"\\\t", " ", b)
+    b = re.sub(r"\\\n", " ", b)
+    return b
+
+
+
+def putpdflink(b, lan): #set pdfurl
+#   value['attr_strpdflink'] =  b
+    if not b: return ''
+    linkval = b
+    if 'n1' in linkval or 'alternative' in linkval: 
+         return  b
+
+    disppdfurl = "http://www.statcan.gc.ca/access_acces/alternative_alternatif.action?lang={0}&loc=" + linkval 
+    return disppdfurl.format('eng' if 'en' in lan else 'fra') 
+
+
+def puturlpdflink(value, b, lan): #set pdf to url
+    if not b: return 1
+    linkval = b
+
+    value['url'] =  b
+    if 'n1' in linkval or 'alternative' in linkval: 
+         value['attr_strurl'] =  b
+         return 1
+    else : 
+        disppdfurl = "http://www.statcan.gc.ca/access_acces/alternative_alternatif.action?lang={0}&loc=" + linkval 
+        value['attr_strurl'] =  disppdfurl.format('eng' if 'en' in lan else 'fra')
+        #fixed by me:
+        value['url'] =  value['attr_strurl']
+        return 0
 
 def filter_olc(value, lan='en'): 
     if value.get('discontinued'): return False
-    if value.get('producttypecode') == '10': return False
 
     if value.get('producttypecode') == '10':
        return False
@@ -31,6 +112,26 @@ def filter_olc(value, lan='en'):
 
     if not value.get('title'):
        return False
+
+    # filtering out the daily records; 
+    display_pid = value.get('display_pid', '')
+    if re.search("11-001-X[0-9]", display_pid):
+        return False
+
+    title = value.get('title')
+    if not title:
+        return False
+
+    if not value.get('archived'):
+       value['stclac'] =  "1;2"
+    elif '2' in value.get('archived').keys():
+       value['stclac'] =  "1;2"
+    elif '3' in value.get('archived').keys():
+       value['stclac'] =  "1;3"
+    elif '4' in value.get('archived').keys():
+       return False
+    elif value.get('archived'):
+       value['stclac'] =  "1;3"
 
     orighiopid = ""
     if value.get('hierarchy'):
@@ -47,9 +148,14 @@ def filter_olc(value, lan='en'):
     if value.get('producttypecode'):
        value['producttypecodeval_ss'] =  value.get('producttypecode').values()
        value['producttypecodekey_ss'] =  value.get('producttypecode').keys()
-       if '11' in value.get('producttypecode').keys() :
-           isTable = "1"
-       if '10' in value.get('producttypecode').keys() :
+       if '11' in value['producttypecodekey_ss']:
+           isTable = "1" #ds:tableview
+           return False
+       elif '27' in value['producttypecodekey_ss']:
+           isSummary = True #ds:summary   --- not found yet
+           #print 'ds:summaryview', value.get('url')
+           return False
+       if '10' in value['producttypecodekey_ss']:
            return False
 
     domain = "https://www150.statcan.gc.ca/n1/" + lan + "/catalogue/"
@@ -74,19 +180,11 @@ def filter_olc(value, lan='en'):
     else:
        value['ds'] =  "nolc"
        value['attr_strolclink'] =  ""
-
-    if not value.get('archived'):
-       value['stclac'] =  "1;2"
-    elif '2' in value.get('archived').keys():
-       value['stclac'] =  "1;2"
-    elif '3' in value.get('archived').keys():
-       value['stclac'] =  "1;3"
-    elif '4' in value.get('archived').keys():
-       continue
-    elif value.get('archived'):
-       value['stclac'] =  "1;3"
+       return False
 
     pdflink = ""
+    origurl = value.get('url').strip()
+    value['ori_url'] = origurl
     if value.get('other_urls'):
         #urls =  value.get('other_urls')
         #if 'stageb' in machine:
@@ -120,7 +218,7 @@ def filter_olc(value, lan='en'):
            htmlink = ""
 
         if pdflink :
-           putpdflink(pdflink)
+           value['attr_strpdflink'] = putpdflink(pdflink, lan)
            #value['attr_strpdflink'] =  pdflink
            if pdflink :
 	       tmppdflink = pdflink
@@ -132,7 +230,7 @@ def filter_olc(value, lan='en'):
 	           value['attr_strurl'] =  htmlink
 	           value['attr_txturl'] =  htmlink
 
-                   putpdflink(pdflink)
+                   value['attr_strpdflink'] =  putpdflink(pdflink, lan)
                    #value['attr_strpdflink'] =  pdflink
 		elif htmlink and not pdflink :
                    value['url'] =  htmlink
@@ -140,44 +238,33 @@ def filter_olc(value, lan='en'):
 	           value['attr_txturl'] =  htmlink
 
 		elif pdflink and not htmlink :
-                   puturlpdflink(pdflink)
+                   donothing = puturlpdflink(value, pdflink, lan)
                    #value['url'] =  pdflink
 	           #value['attr_strurl'] =  pdflink
 	           value['attr_txturl'] =  pdflink
 
                    value['attr_strpdflink'] =  ""
-                   value['attr_fldtitle'] =  pdftitle
-                   value['attr_txttitle'] =  pdftitle
         else:
 		if pdflink and htmlink :
                    value['url'] =  htmlink
-                   putpdflink(pdflink)
-                   # value['attr_strpdflink'] =  pdflink
+                   value['attr_strpdflink'] = putpdflink(pdflink, lan)
 		elif pdflink :
-                   putpdflink(pdflink)
-                   #value['attr_strpdflink'] =  pdflink
+                   value['attr_strpdflink'] = putpdflink(pdflink, lan)
 
 
     if "/catalo" in value.get('url') and "/catalo" in olclink:
-       #value['ds'] =  "olc"
        value['attr_strolclink'] =  ""
 
     if value.get('url') in olclink:
-       #value['ds'] =  "olc"
        value['attr_strolclink'] =  ""
 
-    # if 'pdf' in value.get('url'):
     if '.pdf' in value.get('url'):
-       #value['ds'] =  "olc"
        value['attr_strpdflink'] =  ""
-       value['attr_fldtitle'] =  pdftitle
-       value['attr_txttitle'] =  pdftitle
-       # value['attr_strtitle'] =  pdftitle
        value['attr_strpdflink'] =  ""
        
     return True
 
-def read_json(url):
+def read_json_url(url):
 #    url = 'https://www150.statcan.gc.ca/n1/en/metadata.json?count={count}&type=products&offset={offset}'
     res = []
     total = 0
@@ -191,14 +278,22 @@ def read_json(url):
         for item in r:
             if item.get('variable'): # not used
                 item.pop('variable')
-           res.append(item)
+            if not filter_olc(item):
+                continue
+            res.append(item)
     return total, res
 
-url = 'https://www150.statcan.gc.ca/n1/en/metadata.json?count={count}&type=products&offset={offset}'
-t, r = read_json(url)
-for i in r:
-    print i
-sys.exit(0)
+def read_jsonl(url):
+    res = []
+    with open(url) as f:
+        for line in f:
+            try:
+              r = json.loads(line.rstrip())
+            except:
+              import pdb; pdb.set_trace()
+            res.append(r)
+    return res
+
 
 class OLC_Crawler():
     def __init__(self, data):
@@ -340,4 +435,64 @@ class OLC_Crawler():
         print "failed urls:", failed_urls
         print "error parsing urls:", error_urls
 
+def main():
+    pass
+
+def test():
+    if sys.argv[1]=='download':
+        url = 'https://www150.statcan.gc.ca/n1/en/metadata.json?count={count}&type=products&offset={offset}'
+        t, r = read_json_url(url)
+        for i in r:
+            print json.dumps(i)
+    else:
+        src, dst = set(), set()
+        dedup = {}
+        dup = {}
+        r = read_jsonl(sys.argv[1]) #above download file
+        for i in r:
+            url = i['url']
+            if dedup.get(url, None):
+                #print i
+                #print dedup[url]
+                #print '\n'
+                dup[url] = True
+                dedup[url].append(i)
+            else:
+                dedup[url] = [i]
+            src.add(i['url'])
+        for i in r[:3]:
+            continue
+        #print json.dumps(i)
+
+        #http://f7searchprodz1.stcpaz.statcan.gc.ca:7773/solr/src01EN_shard1_replica1/select?q=ds%3Aolc&rows=12000&fl=id+attr_strurl&wt=json&indent=true
+        olc = read_jsonfile(sys.argv[2]) #from solr
+        olc = olc['response']['docs']
+        for i in olc:
+            dst.add(i['attr_strurl'])
+
+        print len(r), len(olc)
+        diffs = list( src.difference(dst))
+        diffs.sort()
+        for url in diffs:
+            print url
+
+        print '###################'
+        diffs2 = list( dst.difference(src))
+        diffs2.sort()
+        for url in diffs2:
+            print url
+
+        print len(diffs), len(diffs2)
+        print len(src), len(dst)
+
+        print '********************'
+        dl= dup.keys()
+        dl.sort()
+        for l in dl:
+            print l, len(dedup[l])
+    sys.exit(0)
+
+if __name__ =='__main__':
+    #main()
+    test()
 
