@@ -1,4 +1,5 @@
 from grapheekdb.backends.data.localmem import LocalMemoryGraph
+import sys
 g = LocalMemoryGraph()
 book1 = g.add_node(kind='book', name='python tutorial', author='tim aaaa', thema='programming')
 book2 = g.add_node(kind='book', name='cooking for dummies', author='tom bbbb', thema='cooking')
@@ -14,6 +15,10 @@ person1 = g.add_node(kind='person', name='sam xxxx')
 person2 = g.add_node(kind='person', name='tim xxxx')
 person3 = g.add_node(kind='person', name='lue xxxx')
 person4 = g.add_node(kind='person', name='joe xxxx')
+
+d1 = {'kind':'car', 'name':'ford'}
+d2 = {'kind':'car', 'name':'honda'}
+g.bulk_add_node([d1,d2])
 
 g.add_edge(person1, book1, action='bought')
 g.add_edge(person1, book3, action='bought')

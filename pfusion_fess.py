@@ -139,6 +139,11 @@ class stc_fusion():
                 print stage['script']
         print [p['id'] for p in plist]
 
+    def get_query_pipeline(self, name):
+	pl = self.fu.get_query_pipeline(name) #do not know yet
+        config =  pl.get_config()
+        print json.dumps(config,indent=4)
+
     def ds_hosts(self):
 	for ds_name in daily_cron:
             ds = self.fu.get_datasource(ds_name)
@@ -226,6 +231,7 @@ def main():
     #sf.test()
     #sf.dup_index_pipeline()
     #sf.del_index_pipeline()
+    sf.get_query_pipeline('ult01FR-default')
 
 if __name__ == '__main__':
 	main()
