@@ -7,7 +7,18 @@ from elasticsearch_dsl import Search
 from elasticsearch_dsl import DocType, Date, Integer, Keyword, Text, connections
 
 #use Elastic search query builder
-
+''' Put this inside the "functions" list
+{
+  "gauss": {
+     "date": {
+        "origin": "2013-09-17",  #current date
+        "scale": "10d",
+        "offset": "5d", 
+        "decay" : 0.5 
+     }
+  }
+},
+'''
 #modify following es query to support decay function
 def dsl_search():
     client = Elasticsearch('localhost:9200')
@@ -35,12 +46,9 @@ def dsl_search():
     for tag in response.aggregations.per_tag.buckets:
         print(tag.key, tag.max_lines.value)
 
-dsl_search()
-sys.exit(0)
-
 body='''
 {
-  "from" : 1000,
+  "from" : 0,
   "size" : 20,
   "timeout" : "10000ms",
   "query" : {
@@ -116,6 +124,16 @@ body='''
               }
             },
             "functions" : [
+{
+  "gauss": {
+     "timestamp": {
+        "origin": "2018-03-08",
+        "scale": "60d",
+        "offset": "10d", 
+        "decay" : 0.5 
+     }
+  }
+},
               {
                 "filter" : {
                   "match_all" : {
@@ -206,6 +224,21 @@ body='''
   }
 }
 '''
+
+class Result():
+    def __init__(self, txt):
+        self.d = txt #json.loads(txt)
+
+    def test(self):
+        print 'total', self.d['hits']['total']
+        r = self.d['hits']['hits']
+        for item in r:
+            doc = item['_source']
+            print doc['timestamp'], item['_score'], doc['title'].encode('utf-8')
+
+#dsl_search()
+#sys.exit(0)
+
 body = json.loads(body)
 s = Search.from_dict(body)
 body = s.to_dict()
@@ -214,7 +247,9 @@ client = Elasticsearch('localhost:'+sys.argv[1])
 
 es = Elasticsearch([{'host': 'localhost', 'port': int(sys.argv[1])}])
 r = es.search(index="fess.20180125", body=body)
-print (r)
+#print (r)
+r= Result(r)
+r.test()
 
 
 # "dGltZXN0YW1wOltub3ctN2QvZCBUTyAqXQ==" base64 decode to "timestamp:[now-7d/d TO *]"
