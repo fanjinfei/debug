@@ -3,20 +3,41 @@
  Windows, there is a better solution: switch the keyboard layout to US-international and then type [`] followed by [a] to display [à]. Still on Windows, the software EasyType makes it even easier: press once [e] to get [e], twice [e] to get [é], three times [e] to get [è]...
 Input method in Ubuntu 16.04: select "French (Canada)" keyboard layout, the following key's are french.
 
-` + e --> è
-<Alt Gr>´ + e --> é
-¸ + e --> ȩ
-¨ + e --> ë  (shift + ¸)
-^ + e --> ê  
+Windows French keyboard:
+Typing accents on the Canadian French keyboard is fairly simple:
+To type an acute accent (é), type ´ (next to the right-hand shift key) and then e
+To type a grave accent (à, è, ù), type ' (apostrophe / single quote) then the vowel
+The circumflex ˆ and tréma ¨ are in the upper-right corner, side by side next to the enter key
+For ç, type ¸ (left of "enter") and then c
+
+#keyboard left up/down-> english; right up/down-> french
+` + e --> è   
+<Alt Gr>´ + e --> é      (right alt. -> third on keyboard)
+¸ + e --> ȩ              (left on Enter) + C -> ç
+¨ + e --> ë  (shift + ¸) (shift + left_on_enter) 
+^ + e --> ê              (left left on enter)
 The above special char (press twice it shows itself).
 
 2. Phrase
 Je m'appelle - My name is
+appeler -- to call
+J'appelle -- I call
 s'il vois plait -- please
 enchanté(e) -- nice to meet you, pleased to meet you
 suis -- am (conjugated form of être)
 appelez-moi -- call me (formal singual or plural form)
 je/j' -- I
+
+Comment allez-vous? -- How are you(going)?  aller -- to go
+Je vais bien. -- I am doing well.
+Vous allez bien -- you are doing well.
+Merci -- thank you
+Et vous? -- and you
+Très bien. -- very well
+Au revoir! -- good bye
+A bientôt! -- see you soon
+Adieu! -- goodbye
+
 Mademoiselle -- Miss
 garçon -- boy
 fille -- girl

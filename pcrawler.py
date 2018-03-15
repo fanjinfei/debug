@@ -5,6 +5,7 @@ from bs4.element import Comment
 from urlparse import urlparse
 from HTMLParser import HTMLParser
 from lxml import etree
+import hashlib
 
 import sys
 import multiprocessing
@@ -27,7 +28,7 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from url_filters import daily_filter, daily_archive_filter, daily_latest_filter
-from crawler_base import write_csv
+from crawler_base import write_csv, read_csv
 
 def get_web_html(s, url):
     user_agent = {'User-agent': 'statcan dev crawler; abuse report jinfei.fan@canada.ca'}
@@ -364,6 +365,8 @@ class Crawler():
         self.excls = data.get('exclude_patterns', [])
         self.follow_only = data.get('follow_link_not_index', [])
         self.csv_file = data['output_file']
+        self.archive_file = data.get('archive_file', None)
+        self.hist_file = data.get('hist_file', None)
         self.default_last_modified = data.get('default_last_modified', None)
         self.try_last_modified = data.get('try_last_modified', True)
         self.link_filter_func = link_filters.get(data.get('link_filter_function', None), None)
@@ -382,7 +385,17 @@ class Crawler():
         self.do_index = re.compile('Cadotte', re.I)
 
         self.sessions = {}
+        self.archive = {}
+        self.hist = {}
+        if self.archive_file:
+            csvs = read_csv(self.archive_file)
+            for rec in csvs:
+                self.archive[rec[0]] = rec #key=url
 
+        if self.hist_file:
+            csvs = read_csv(self.hist_file)
+            for rec in csvs:
+                self.hist[rec[0]] = rec #key=url
     def get_session(self, url):
         host = urlparse(url).hostname
         if not self.sessions.get(host, None):
@@ -456,8 +469,14 @@ class Crawler():
 
             print url, len(urls), len(self.handled_urls)
 #            if depth == self.depth: continue
+            if self.depth==0 and self.archive:
+                rec = self.archive.get(url, None)
+                if rec:
+                    data.append(rec) #archived
+                    continue
 
             count = 5
+            md5 = hashlib.md5()
             while count > 0:
                 try:
                     c = get_web_html(self.get_session(url), url)
@@ -473,6 +492,15 @@ class Crawler():
                 failed_urls.append(url)
                 print "failed:", url
                 continue
+            md5.update(c.encode('utf-8'))
+
+            if self.depth==0 and self.hist:
+                rec = self.hist.get(url, None)
+                if rec and len(rec)>8 and rec[8]==md5.hexdigest():
+                    data.append(rec) # the same md5 as hist
+                    continue
+
+
             c = filter_stopindex(c)
             doc = Doc(url, c, self.excl_htmls, self.incl_htmls, self.lang, self.try_last_modified)
             doc.process()
@@ -487,7 +515,12 @@ class Crawler():
                     error_urls.append(url)
             links = doc.link()
             if self.index_filter(doc):
-                data.append(doc.export())
+                rec = doc.export()
+                if len(rec)==8:
+                    rec.append(md5.hexdigest())
+                elif len(rec) >8:
+                    rec[8] = md5.hexdigest()
+                data.append(rec)
             print '\t\t^', doc.title
             #todo: if not content: log warning
 

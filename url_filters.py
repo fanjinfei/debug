@@ -52,7 +52,7 @@ def daily_latest_filter(urls):
     res = {}
     for rid, links in rids.items():
         links.sort()
-        url = links[0]
+        url = links[-1]
         res[url] = new_urls[url]
     return res
 
