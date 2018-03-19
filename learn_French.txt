@@ -24,7 +24,12 @@ le plaisir est pour moi: my pleasure
 
 
 2. numbers-
-un:one cing:five nerf:nine dix:ten
+le chiffre : the number
+le nombre: the number
+zéro un:1 deux:2 trois:3 quatre:4 cinq:5 six:6
+sept:7 huit:8 neuf:9 dix:10 onze:11 douze:12 treize:13 quatorze:14 quinze:15
+seize:16 dix-sept:17 dix-huit:18 dix-neuf:19 
+vingt:20 
 
 3. Articles:
 The, a, an, some-
@@ -82,6 +87,11 @@ Trés - very
 Noun:
 fille: girl
 enfant/enfants
+la saison: the seasons (les saisons)
+l'hiver: the winter (il fait froid/cold en hiver) neige/snows
+le printemps :spring, il fait beau au printemps. (in)
+l'été: summer, chaud en été (hot in summer)
+l'automne: autumn. les feuilles tombent en automne (leaves fall in autumn)
 
 Time of the day:
 Le jour: the day
@@ -90,4 +100,10 @@ le matin: morning
 à midi: at noon
 l'apreés-midi: afternoon
 le soir: evening (ce:this)
+tous les jours: everyday
+tous les matins: every morning
 
+l'heure: hour
+la minute
+la seconde
+Quelle heure esst-il? what time is it?
