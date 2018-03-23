@@ -21,6 +21,20 @@ De rien: u're welcome
 Je t'en prie
 Je vous en prie: u are welcome
 le plaisir est pour moi: my pleasure
+commnet vas-tu? (how are you)
+Comment t'appelles-tu?(what is your name?)
+Quel âge as-tu?(how old are you?)
+J'ai vingt ans.(i am 20 years old)
+D'où viens-tu?(where are you from)
+Je viens de Bxxx.(i am from Bxx)
+Qu'est-ce que tu fais?(what do you do)
+Je suis étudiante(I am a student)
+Où habites-tu?(where do you live)
+J'habite à Paris(I live in)
+Est-ce que tu as des frères et soeurs?(do u have any brothers or sisiters)
+J'ai deux frères et une soeur.
+Qu'est-ce que tu aimes faire?(what do u like to do)
+J'aime sortir avec mes amis(I like going out with my friends)
 
 
 2. numbers-
@@ -35,14 +49,18 @@ vingt:20
 The, a, an, some-
 Le(mas sin) La(fem,sing) Les(mas/fem plur) l'(maséfem sing in front of a vowel or h)
 un(mas sin)  une(fem sin) des(mas/fem plur:some)  du(mas uncountable/part)  de la(fem sin) de l'(vowel)
-un garçon, une fille/banane, du tea, de la confiture(coffee), des fruits
+un garçon, une fille/banane, du tea, de la confiture(jam), des fruits
 de l' eau(water)
 
-4. Pronoun:
-J tu il/ elle/ on
-Je
-Nous vous ils/ elles/ on
+j'aime les enfants ( I like children)
+des amis (some friends), je vaux une banane ( i like), je bois du thé.(I am drinking some tea)
+de l' air
 
+4. Pronoun:
+singular: Je tu/vous il/ elle/ on(one)
+          I   you    he she one
+plural: Nous vous ils/ elles/ on(we)
+         we   you they they we
 Comment:how
 
 5. Conj:
@@ -71,20 +89,72 @@ le toucher: touch       toucher: to touch
 la main: hand          la peau: skin
 
 
-be:
+être(be):
+present:
+je suis : I am
+Tu es : you are
+il/elle/on est : he/she/one is
+nous sommes : we are
+vous êtes : you are
+ils/elles sont : they are
 
 
-have:
+avoir(have):
+Present:
+j' ai : i have
+tu as : u have
+il/elle/on a : he/she/one has
+nous avons : we have
+vous avez : u have
+ils/ells ont : they have
+
+aimer(love/like): regular
+Present:
+j' aime, tu aimes, il/elle/on aime, nous aimons, 
+vous aimez, ils/elles aiment
+
+faire(do/make): irregular
+Present:
+Je fais, tu fais, il/elle/on fait, nous faisons,
+vous faites, ils/elles font
 
 Verb:
 aller/allez - go
-vais - doing
+vais, fais, faire - doing, en train de faire
+mange, manger - eat
+
+
+Adjective possessive:
+mon(singular masculine/vowel) :my   mon chat, mon église(church)
+ma(singular feminine):my    ma main(hand)
+mes(plural): mes parents
+ton(singular):your    ton chat    ton eglise
+ta(singular fe):your  ta main
+tes(plural):your  tes parents
+son(singular 3rd): his/hers/its  son chat, son église
+sa(singular fe): his/hers/its   sa main
+ses: theirs  ses parents
+notre:our+singular,  notre frère(brother)
+nos:our+plural, nos frères(brothers)
+votre:your+singular, votre frère
+vos:your+plural, vos frères
+leur:their+singular, leur frère
+leurs:plural, leurs frères
 
 Adv:
 Trés - very
 
 
 Noun:
+une abeille:bee une baleine
+un cadeau  un drapeau
+un éléphant  une feuille  une grenouille
+une horloge  un igloo  un jambon
+un koala  une lample  une maison
+un nounours  un oeuf  un poisson
+une queue  un robot  un serpent
+un téléphone  une usine  un violon
+un wagon  un xylophone  un yacht  un zèbre
 fille: girl
 enfant/enfants
 la saison: the seasons (les saisons)
@@ -107,3 +177,18 @@ l'heure: hour
 la minute
 la seconde
 Quelle heure esst-il? what time is it?
+
+Les passe-temps(Hobbies):
+le apsse-temps, le loisir
+le temps libre (spare time)
+Qu'est-ce que tu aimes faire pendant ton temps libre?
+(^what do you like to do in your spare time)
+Quels sont tes loisirs et passe-temps favoris?
+(^what are you favorite hobbies)
+J'aime écouter de la musique.(I like listening to music)
+J'aime danser (I like dancing)
+J'aime chanter (singing)
+J'aime jouer de la guitare(playing guitar)
+J'aime jouer du piano(playing the piano)
+J'aime regarder la téle(watching TV)
+J'aime cuisiner(cooking)
