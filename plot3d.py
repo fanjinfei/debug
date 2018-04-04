@@ -18,14 +18,30 @@ xx, yy = np.meshgrid(range(10), range(10))
 # calculate corresponding z
 z = (-normal[0] * xx - normal[1] * yy - d) * 1. /normal[2]
 
-# plot the surface
-plt3d = plt.figure().gca(projection='3d')
-plt3d.plot_surface(xx, yy, z, alpha=0.2)
+def draw1():
+    # plot the surface
+    plt3d = plt.figure().gca(projection='3d')
+    plt3d.plot_surface(xx, yy, z, alpha=0.2)
 
-# Ensure that the next plot doesn't overwrite the first plot
-ax = plt.gca()
-ax.hold(True)
+    # Ensure that the next plot doesn't overwrite the first plot
+    ax = plt.gca()
+    ax.hold(True)
 
-ax.scatter(point2[0], point2[1], point2[2], color='green')
+    ax.scatter(point2[0], point2[1], point2[2], color='green')
 
+def draw2():
+    # Create the figure
+    fig = plt.figure()
+
+    # Add an axes
+    ax = fig.add_subplot(111,projection='3d')
+
+    # plot the surface
+    ax.plot_surface(xx, yy, z, alpha=0.2)
+
+    # and plot the point 
+    ax.scatter(point2[0] , point2[1] , point2[2],  color='green')
+
+#draw1()
+draw2()
 plt.show()
