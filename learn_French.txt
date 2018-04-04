@@ -179,8 +179,8 @@ la seconde
 Quelle heure esst-il? what time is it?
 
 Les passe-temps(Hobbies):
-le apsse-temps, le loisir
-le temps libre (spare time)
+le passe-temps, le loisir (hobby)
+le temps libre (free/spare time)
 Qu'est-ce que tu aimes faire pendant ton temps libre?
 (^what do you like to do in your spare time)
 Quels sont tes loisirs et passe-temps favoris?

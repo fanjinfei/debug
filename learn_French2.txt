@@ -1,4 +1,4 @@
-1. Vowels:
+1. Vowels: https://youtu.be/0mC2zRtx8h8?list=PLRauVdJ9zRhKlouRlrGe4D1_yidYKg5-0
 a e i o u y
 ami - friend
 agréable - agreeable
@@ -27,27 +27,27 @@ amuse
 
 
 2. Accent:
-accent aigu (acute accent) ´ é
+accent aigu(gg) (acute accent) ´ é
 le bébé, l'été, le café, l'épaule, poésie, créé(created),
 
-grave accent: ` è à ù
-le père, la mère, très, crème, à(at/to), où(where) - ou(or)
+grave accent: ` è(sound) à(meaning) ù(meaning)
+le frère, le père, la mère, très, crème, à(at/to), où(where) - ou(or)
 café ou lait(milk)
 
 Hélène(Helen), élève(pupil), éphémère(ephemeral), légère(light)
 déjà(already), décès(death) 
 ensemble(together)
 
-accent circonflexe(circumflex) ^ â ê î ô û (replace 's')
+accent circonflexe(circumflex) ^ â ê(sound è) î ô û (replace 's')
 forêt - forest
 mât - mast
 pâte - pasta
-fête - featival/party
+fête - festival/party
 hôtel - hotel
 hôpital - hospital
 maître - master
 
-accent tréma(trema) ¨ ë ï ü (
+accent tréma(trema) ¨ ë ï ü (two vowels, change sound-both/separate pronounce)
 maïs sweetcorn 
 mais but
 naïve naive
@@ -81,9 +81,9 @@ France - français
 No pronouce at end of words (h g d p t s x)
 
 est-ce que: are do/ sentence? no continous in French
-Est-ce que tu es français?
-Est-ce que tu viens au cinéma avec nous ce soirÉ
-  ^Are u coming to the cinema with us this eveningÉ
+Est-ce que tu es français(e)?
+Est-ce que tu viens au cinéma avec nous ce soir?
+  ^Are u coming to the cinema with us this evening?
 Est-ce que vous mangez au restaurant aujourd'hui?
   ^ are you earint the restaurant today?
 Past tense:
