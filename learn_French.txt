@@ -144,6 +144,9 @@ leurs:plural, leurs frères
 Adv:
 Trés - very
 
+ADP:
+pour - for
+à - at
 
 Noun:
 une abeille:bee une baleine

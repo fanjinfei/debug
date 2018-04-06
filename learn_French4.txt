@@ -2,112 +2,112 @@ words:
 
 actif/ active
 adhésif/ adhésive
-ami
-arriver
-bibliothèque
-bicyclette
-cheminée
-ciseaux
-commisé commise
-déchiré
-demi
-difficile
-dîner
-directive
-disponible
-dizaine
-edifice
-élastique
-équipe
-étiquette
-facile
-fiche
-guide
-habiter
-hôpital
-ici
-idée
-il
-imaginer
-liste
-logique
-maladie
-mtinée
-midi
-mille
-niveau
-objectif
-obligatoire
-original
-petit/ petite
-pique-nique
-possible
-qualité
-riche
+ami (friend)
+arriver (arrive)
+bibliothèque (library)
+bicyclette (bycycle)
+cheminée (fireplace)
+ciseaux (scissors)
+commis/ commise (clerk)
+déchiré (torn apart)
+demi (half)
+difficile (difficult)
+dîner (diner)
+directive (directive)
+disponible (available)
+dizaine (decade)
+édifice (building)
+élastique (elastic)
+équipe (team)
+étiquette (label)
+facile (easy)
+fiche (plug)
+guide (guide)
+habiter (live)
+hôpital (hospital)
+ici (right here)
+idée (idea)
+il (he)
+imaginer (imagine)
+liste (list)
+logique (logic)
+maladie (disease)
+matinée (morning)
+midi (midday)
+mille (thousand)
+niveau (level)
+objectif (goal)
+obligatoire (mandatory)
+original (original)
+petit/ petite (small)
+pique-nique (picnic)
+possible (possible)
+qualité (quality)
+riche (rich)
 rire - laugh
-systéme 
+systéme (system)
 
-action
-affectation
-allocation
-amélioration
-application
+action (action)
+affectation (assignment)
+allocation (allocation)
+amélioration (improvement)
+application 
 association
-autorisation
-collaboration
+autorisation (authorization)
+collaboration 
 commission
 déclaration
-démission
+démission (resignation)
 destination
 direction
 édition
 élection
 émission
 exception
-location
+location (leasingÉ)
 modification
 nation
 négation
-négociation
+négociation (negotiation)
 notion
-planification
-possesion
-réalisation
-réception
+planification (planning)
+possesion 
+réalisation (realization)
+réception 
 réparation
 section
 
-affaire
-aire
+affaire (affair)
+aire (area)
 Alberta
-atomisphère
-averse
-carriere
-certificat
-cher/ chère
-chercher
-clair/ claire
-critère
-dernier/ dernière
-derriére
-déterminer
-dictionnaire
-êtagère
-exercice
-expert/ experte
-faire
-fermer
-gestionnaire
-hebdomadaire
-hier
-horaire
+atomosphère
+averse  (down pour)
+carriere (career)
+certificat (certificate)
+cher/ chère (expensive)
+chercher (search)
+clair/ claire (clear)
+critère (criterion)
+dernier/ dernière (latest)
+derriére (behind)
+déterminer (determine)
+dictionnaire (dictionary)
+êtagère (shelf)
+exercice (exercise)
+expert/ experte 
+faire (make)
+fermer (close/shut)
+gestionnaire (manager/administrator)
+hebdomadaire (weekly)
+hier (yesterday)
+horaire (schedule)
 immersion
-locataire
-maire (mayorÉ)
+locataire (tenant)
+maire (mayor) 
 matrière (matter)
 merci (thank u)
 mercredi (Wendesday)
-minitère
+ministère (ministry)
 moderne
 nécessaire
 observe

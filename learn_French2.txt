@@ -78,7 +78,7 @@ recevoir (receive) - je reçois(I receive)
 remplacer (replace) - remplaçant(replacing)
 France - français
 
-No pronouce at end of words (h g d p t s x)
+No pronouce at end of words (h g d p t s x) HST*GDP
 
 est-ce que: are do/ sentence? no continous in French
 Est-ce que tu es français(e)?
