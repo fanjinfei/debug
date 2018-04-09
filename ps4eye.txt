@@ -1,0 +1,36 @@
+Driver load (linux):
+https://github.com/fanjinfei/ps4eye
+add "blacklist uvcvideo" to "/etc/modprobe.d/blacklist.conf"
+   and then "rmmod uvcvideo" to unload the already loaded module.
+1. sudo ./ps4eye_init.py (upload firmware and device reset. Need to run on boot)
+2. ./ps4eye_cmd.py startup.bin 1 (on my laptop device 0 is the internal camera)
+  # this is a opencv2 capture part.
+
+
+Viewer app (need the above init driver. "start.bin"?):
+Prepare:
+sudo apt install libmpg123-dev
+sudo apt-get install libgstreamer-plugins-base1.0-dev
+sudo apt install libsndfile1-dev
+sudo apt install libopenal-dev
+sudo apt install libglfw3-dev
+sudo apt install libglew-dev
+
+1. wget http://openframeworks.cc/versions/v0.9.8/of_v0.9.8_linux64_release.tar.gz
+  mv ... to ~/
+  unzip/install (no sound part needed)
+
+2. clone PS4EYECam; git checkout cdd5f6d . (for cget)
+  mkdir ../ps4
+  cd ../ps4
+  cmake ../PS4EYECam
+  ( uncomment the better_enums line on error) , re-run cmake
+
+3. make
+  executable  -> PS4Eye
+
+4. Linux Power Management issue (disable it after 4.6)
+  (power draw 250~300mA)
+  sudo su
+  cd /sys
+  find | grep usb3_lpm_permit | xargs -I {} bash -c "echo 0 > {}"
