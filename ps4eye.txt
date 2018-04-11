@@ -34,3 +34,20 @@ sudo apt install libglew-dev
   sudo su
   cd /sys
   find | grep usb3_lpm_permit | xargs -I {} bash -c "echo 0 > {}"
+
+5. traditional LPM
+  for i in /sys/bus/usb/devices/*/power/autosuspend_delay_ms;
+    do echo -1 > $i;
+  done
+  for foo in /sys/bus/usb/devices/*/power/control;
+    do echo on > $foo;
+  done
+
+  find /sys -iname "*usb3*'  #show lpm status
+  OR check kernel boot option "usbcore.autosuspend=-1" (old kernel)
+  OR check kernel boot option "usbcore.autosuspend_delay_ms=-1" (new kernel)
+  OR "modprobe usbcore autosuspend=-1" if  usbcore is not compiled into kernel.
+  OR echo -1 >/sys/module/usbcore/parameters/autosuspend
+
+  cat /sys/module/usbcore/parameters/autosuspend
+  dmesg --> check device suspended or not

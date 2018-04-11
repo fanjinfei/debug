@@ -21,7 +21,7 @@ De rien: u're welcome
 Je t'en prie
 Je vous en prie: u are welcome
 le plaisir est pour moi: my pleasure
-commnet vas-tu? (how are you)
+comment vas-tu? (how are you)
 Comment t'appelles-tu?(what is your name?)
 Quel âge as-tu?(how old are you?)
 J'ai vingt ans.(i am 20 years old)
@@ -35,6 +35,9 @@ Est-ce que tu as des frères et soeurs?(do u have any brothers or sisiters)
 J'ai deux frères et une soeur.
 Qu'est-ce que tu aimes faire?(what do u like to do)
 J'aime sortir avec mes amis(I like going out with my friends)
+Quel est votre numéro de téléphone? (what is r phone #)
+Parlez-vous français? (do u speak french)
+Pouvez-vous épeler votre nom s'il vous plaît? (could u spell your name please?)
 
 
 2. numbers-
@@ -59,9 +62,15 @@ de l' air
 4. Pronoun:
 singular: Je tu/vous il/ elle/ on(one)
           I   you    he she one
+          Moi
+          me
+          mon/ma   votre
+          my    your
 plural: Nous vous ils/ elles/ on(we)
          we   you they they we
+      
 Comment:how
+Quel: what
 
 5. Conj:
 et:and
@@ -147,6 +156,9 @@ Trés - very
 ADP:
 pour - for
 à - at
+de
+dans
+
 
 Noun:
 une abeille:bee une baleine
