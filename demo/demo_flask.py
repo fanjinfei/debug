@@ -157,6 +157,10 @@ def test():
     pprint.pprint(r)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8000)
+    #app.run(host='0.0.0.0', port=8000)
     #test()
+
+    from gevent.wsgi import WSGIServer
+    http_server = WSGIServer(('', 8001), app)
+    http_server.serve_forever()
 

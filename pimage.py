@@ -115,7 +115,7 @@ def opencv_dp():
 def main():
     #test_read()
     #return opencv_dp()
-    #return image_read(True)
+    return image_read(True)
 
     pix1, pix2 = image_read()
     cal_pos(pix1, pix2)

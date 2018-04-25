@@ -31,7 +31,7 @@ from url_filters import daily_filter, daily_archive_filter, daily_latest_filter
 from crawler_base import write_csv, read_csv
 
 def get_web_html(s, url):
-    user_agent = {'User-agent': 'statcan dev crawler; abuse report jinfei.fan@canada.ca'}
+    user_agent = {'User-agent': 'statcan dev crawler; abuse report search team'}
     if not s:
         res = requests.get(url=url, headers=user_agent, verify=False, timeout=10)
     else:
@@ -155,7 +155,7 @@ class Doc():
         return nodes
 
     def try_html_parser_content_date(self):
-	s = mparser(self.ori_content, "html.parser")
+        s = mparser(self.ori_content, "html.parser")
         content = get_text(s, [])
         content = content.replace('\n', ' ') if self.content else ''
         content = content.replace('\t', ' ')
@@ -425,6 +425,7 @@ class Crawler():
         #c = get_web_html(None, url)
         #root = etree.parse(filename).getroot()
         #root = etree.fromstring(c.decode('utf-8')).getroot()
+        parser = etree.XMLParser(recover=True)
         root = etree.parse(url).getroot()
         for element in root.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}url"):
             link = None
@@ -521,7 +522,7 @@ class Crawler():
                 elif len(rec) >8:
                     rec[8] = md5.hexdigest()
                 data.append(rec)
-            print '\t\t^', doc.title
+            print '\t\t^', doc.title.encode('utf-8')
             #todo: if not content: log warning
 
             #time.sleep(2)

@@ -14,6 +14,7 @@ def daily_archive_filter(urls, latest=None, current=None):
     res = {}
     for link, d in urls.items():
         link = link.replace('.ca/daily', '.ca/n1/daily')
+        link = link.replace('/www.statcan.gc.ca/', '/www150.statcan.gc.ca/')
         i = link.find('?rid=')
         if i > 0:
             link = link[:i]
@@ -23,6 +24,7 @@ def daily_archive_filter(urls, latest=None, current=None):
 
 def proc(url):
         url = url.replace('.ca/daily', '.ca/n1/daily')
+        url = url.replace('/www.statcan.gc.ca/', '/www150.statcan.gc.ca/')
         if url.find('/n1/daily') < 0: return None, None # vs '/daily-q..'
         i = url.find('?rid=')
         if i < 0: return None, None

@@ -1,0 +1,10 @@
+requests
+matplotlib
+#sudo apt install python-tk
+imageio
+rasl
+opencv-python
+bs4
+pyyaml
+unicodecsv
+dateparser
