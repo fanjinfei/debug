@@ -10,6 +10,10 @@ import rasl #image alignment
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+from CannyEdge.utils import to_ndarray
+from CannyEdge.core import (gs_filter, gradient_intensity, suppression,
+                            threshold, tracking)
+
 numpy = np
 # A map of rgb points in your distribution
 # [distance, (r, g, b)]
@@ -81,18 +85,20 @@ def calculate_focus(w, h, x1, x2, len_d, d): #from manually marked points to cam
     print "focus lenght {0:.2f}mm, {1} {2} {3}".format(focus, x1, x2, (x1-x2))
     return focus
     
-def calculate_distance(w, h, x1, x2, len_d, focus, x_off_center): #from manually marked points to distance
-    x1 = abs(x1 - w/2 +x_off_center ) #left
-    x2 = abs(x2 - w/2 -x_off_center ) #right
+def calculate_distance(w, h, x1, x2, len_d, focus, x_off_center, verbose=False): #from manually marked points to distance
+    x1 = (x1 - w/2 +x_off_center ) #left
+    x2 = (x2 - w/2 -x_off_center ) #right
     delta = abs(x1-x2)
     d = len_d*focus/delta
-    print "distance lenght {0:.2f}mm, {1} {2} {3}".format(d, x1, x2, delta)
+    if verbose:
+        print "distance lenght {0:.2f}mm, {1} {2} {3}".format(d, x1, x2, delta)
     return d
 
-def calculate_pos(w, h, x1, y1, focus, z): #from 
+def calculate_pos(w, h, x1, y1, focus, z, verbose=False): #from 
     x = z/focus*(x1-w/2 +center_offset)
     y = z/focus*(y1-h/2)
-    print "pos xyz {0:.2f}mm, {1:.2f} {2:.2f}".format(x, y, z)
+    if verbose:
+        print "pos xyz {0:.2f}mm, {1:.2f} {2:.2f}".format(x, y, z)
     return x,y,z
 
 def normalize_px(px, w, h):
@@ -194,7 +200,7 @@ def calculate_match(px1, px2, x1, y1, y_offset, edge=10, max_right=100, verbose=
     return x2,y2,val
 
 #ouput 3D PC, zero in left lens
-def match_lr(px1, px2, w, h, y_offset, edge=10):
+def match_lr(em1, px1, px2, w, h, y_offset, edge=10):
     #match each of the p1 in px1 to p2 in px2, sort them in order
     #do not calculate the edge size(10)
     res = []
@@ -202,13 +208,14 @@ def match_lr(px1, px2, w, h, y_offset, edge=10):
     pr_t = time.time()
     for j in range(16, h-edge-2):
         for i in range(14, w-edge-2):
-            mi, mj, val = calculate_match(px1, px2, i, j, y_offset, edge, 50) #100
-            res.append([i, j, mi, mj, val])
             count += 1
-            if count %100 == 0:
+            if count %1000 == 0:
                 now = time.time()
                 print count, "{0:.2f}".format(now-pr_t)
                 pr_t = now
+            if em1[j][i] == 0: continue
+            mi, mj, val = calculate_match(px1, px2, i, j, y_offset, edge, 50) #100
+            res.append([i, j, mi, mj, val])
     return res
 
 def draw2(ps):
@@ -250,8 +257,18 @@ def draw2(ps):
     #    plt.draw()
     #    plt.pause(.001)
 
+def get_edges(img_file, sigma, t, T):
+    img = to_ndarray(img_file)
+    img = gs_filter(img, sigma)
+    img, D = gradient_intensity(img)
+    img = suppression(img, D)
+    img, weak = threshold(img, t, T)
+    img = tracking(img, weak)
+    return img
+
 def image_read(show=False):
     im1 = Image.open('/tmp/a.jpg') #left
+    e_im1 = get_edges('/tmp/a.jpg', 1.4, 20, 40) #left
     im2 = Image.open('/tmp/b.jpg') #left
     pix1, pix2 = im1.load(), im2.load()
 
@@ -265,7 +282,7 @@ def image_read(show=False):
     p1 = [x,y,z]
     
     print ''
-    d2 = calculate_distance(640.0, 400.0, 318, 305, 80.0, 400.0, -0.2) # (tripod top)
+    d2 = calculate_distance(640.0, 400.0, 318, 305, 80.0, 400.0, -0.2, True) # (tripod top)
     x,y,z = calculate_pos(640.0, 400.0, 318, 307, 400.0, d2) #
     p2 = [x,y,z]
 
@@ -311,17 +328,35 @@ def image_read(show=False):
     ps = [p1,p2,p3]
     print ps
     
-    res = match_lr(p1g, p2g, 640, 400, -4, 10)
+    res = match_lr(e_im1, p1g, p2g, 640, 400, -4, 10)
     res.sort(key=lambda x:x[4]) #get some threshold
-    for x1,y1,x2,y2,val in res[:10000]:
-        if x1==x2: continue
-        d = calculate_distance(640.0, 400.0, x1, x2, 80.0, 400.0, -0.2)
-        x,y,z = calculate_pos(640.0, 400.0, x1, y1, 400.0, d)
-        ps.append([x,y,z])
+    if False:
+        for x1,y1,x2,y2,val in res[:10000]:
+            if x1==x2: continue
+            d = calculate_distance(640.0, 400.0, x1, x2, 80.0, 400.0, -0.2)
+            x,y,z = calculate_pos(640.0, 400.0, x1, y1, 400.0, d)
+            ps.append([x,y,z])
 
-    draw2(ps)
+        draw2(ps)
+        plt.show()
     if True:
-      plt.show()
+        imd = Image.new('RGB', (640, 400))
+        ld = imd.load()
+
+        for x1,y1,x2,y2,val in res[:10000]:
+            if x1==x2: continue
+            d = calculate_distance(640.0, 400.0, x1, x2, 80.0, 400.0, -0.2)
+            r, g, b = pixel(d, width=3000, map=heatmap)
+            r, g, b = [int(256*v) for v in (r, g, b)]
+            #r = int(gaussian(x, 158.8242, 201, 87.0739) + gaussian(x, 158.8242, 402, 87.0739))
+            #g = int(gaussian(x, 129.9851, 157.7571, 108.0298) + gaussian(x, 200.6831, 399.4535, 143.6828))
+            #b = int(gaussian(x, 231.3135, 206.4774, 201.5447) + gaussian(x, 17.1017, 395.8819, 39.3148))
+            ld[x1, y1] = (r, g, b)
+        fig = pylab.figure()
+        pylab.imshow(imd)
+        pylab.show()
+        return
+    
     return
 
     '''
