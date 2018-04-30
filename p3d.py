@@ -1,5 +1,7 @@
 import sys, math
+import time
 import numpy as np
+import heapq
 import pylab
 import imageio #read video
 from PIL import Image #read image
@@ -8,6 +10,7 @@ import rasl #image alignment
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+numpy = np
 # A map of rgb points in your distribution
 # [distance, (r, g, b)]
 # distance is percentage from left edge
@@ -24,6 +27,9 @@ heatmap = [
 #revese heatmap
 heatmap = heatmap[:-3]
 
+def rgb2gray(R,G,B):
+    return 0.21*R + 0.72*G + 0.07*B
+
 def gaussian(x, a, b, c, d=0):
     return a * math.exp(-(x - b)**2 / (2 * c**2)) + d
 
@@ -35,8 +41,6 @@ def pixel(x, width=100, map=[], spread=1):
     return min(1.0, r), min(1.0, g), min(1.0, b)
 
 def gradient_color_demo():
-    import math
-    from PIL import Image
     width = 1000
     im = Image.new('RGB', (width, 62))
     ld = im.load()
@@ -91,22 +95,121 @@ def calculate_pos(w, h, x1, y1, focus, z): #from
     print "pos xyz {0:.2f}mm, {1:.2f} {2:.2f}".format(x, y, z)
     return x,y,z
 
-def calulate_diff(pix1, pix2): #10X10 square
-    return 0
+def normalize_px(px, w, h):
+    px2 = numpy.empty((w, h))
+    mx1, mx2=0,0
+    for i in range(w):
+        for j in range(h):
+            mx2 = max(mx2, px[i][j])
+            mn1 = min(mx1, px[i][j])
+    for i in range(w):
+        for j in range(h):
+            px2[i][j] = (px[i][j]-mn1)/(mx2-mn1)*255.0
+    return px2
+
+def normalize_im(px, w, h):
+    mx1, mx2=0,0
+    for i in range(w):
+        for j in range(h):
+            mx2 = max(mx2, px[i,j])
+            mn1 = min(mx1, px[i,j])
+    for i in range(w):
+        for j in range(h):
+            px[i,j] = (px[i,j]-mn1)/(mx2-mn1)*255.0
+    return px
+
+def calculate_diff(pix1, pix2, size=9): #9X9 square, SAD- sum of absolute difference
+    d = 0
+    hd = 0
+    '''
+    hist1 = {}
+    hist2 = {}
+    def init_hist(h):
+        for i in range(256):
+            h[i] = 0
+    init_hist(hist1)
+    init_hist(hist2)
+    '''
+    for i in range(size):
+        for j in range(size):
+            d += abs(pix1[i][j] - pix2[i][j])
+            #hist1[int(pix1[i][j])] += 1
+            #hist2[int(pix2[i][j])] += 1
+    #for i in range(256):
+    #    hd += abs(hist1[i] - hist2[i])
+    return d, hd
+
+def calculate_diff2(pix1, pix2, x1, y1, x2, y2, size=9): #9X9 square, SAD- sum of absolute difference
+    d = 0
+    for i in range(size):
+        for j in range(size):
+            d += abs(pix1[x1+i, y1+j] - pix2[x2+i, y2+j])
+    return d, 0
 
 #input: left/right image, left p1(x1,y1), y_offset + y1 = y2
 #output:match p2(x2,y2), val(confidence)
-def calculate_match(px1, px2, x1, y1, y_offset): 
-    x2, y2 = x1, y1
+def calculate_match(px1, px2, x1, y1, y_offset, edge=10, max_right=100, verbose=False): 
+    w,h = 640,400
+    #edge = 10 #2*edge+1 = block size
+    bsz = 2*edge +1
+    x2, y2 = x1, y1+y_offset
     val = 0.0
     threshold = 0.0 #mininum matching
+    res = []
+    max_shift = min(max_right, x1-edge-1)
+    '''
+    a = numpy.empty((bsz, bsz))
+    b = numpy.empty((bsz, bsz))
+    for j in range(bsz):
+        for k in range(bsz):
+            #a[j][k] = rgb2gray(*px1[x1-edge+j, y1-edge+k])
+            a[j][k] = px1[x1-edge+j, y1-edge+k]
+    for i in range(max_shift):
+        x0 = x1-i-edge  #right is more on left side
+        for j in range(bsz):
+            for k in range(bsz):
+                #b[j][k] = rgb2gray(*px2[x0+j, y2-edge+k])
+                try:
+                    b[j][k] = px2[x0+j, y2-edge+k]
+                except IndexError:
+                    print j, k, x1, y1, x0, y2
+        sad, hd = calculate_diff(a, b, bsz)
+        res.append([i, sad, hd])
+    '''
+    for i in range(max_shift):
+        sad, hd = calculate_diff2(px1, px2, x1-edge, y1-edge, x1-i-edge, y2-edge, bsz)
+        res.append([i, sad, hd])
+    #res.sort(key=lambda x:x[1])
+    res = heapq.nsmallest(2, res, key=lambda x:x[1])
+    i,val, _ = res[0]
+
+    di = 0
+    for k in range(2):
+        di += res[k][0]
+    di = int(di/2.0)
+    x2 = x1-di
+
+    if verbose:
+        print "match left xy {0:.2f}/{1:.2f} to right {2:.2f}/{3:.2f}, val {4:.2f}".format(x1, y1, x2, y2, val)
     return x2,y2,val
 
 #ouput 3D PC, zero in left lens
-def match_lr(px1, px2):
+def match_lr(px1, px2, w, h, y_offset, edge=10):
     #match each of the p1 in px1 to p2 in px2, sort them in order
-    ms = []
-    return None
+    #do not calculate the edge size(10)
+    res = []
+    count = 0
+    pr_t = time.time()
+    for j in range(16, h-edge-2):
+        for i in range(14, w-edge-2):
+            mi, mj, val = calculate_match(px1, px2, i, j, y_offset, edge, 50) #100
+            res.append([i, j, mi, mj, val])
+            count += 1
+            if count %100 == 0:
+                now = time.time()
+                print count, "{0:.2f}".format(now-pr_t)
+                pr_t = now
+    return res
 
 def draw2(ps):
     point  = np.array([1, 2, 3])
@@ -153,8 +256,9 @@ def image_read(show=False):
     pix1, pix2 = im1.load(), im2.load()
 
     #test calibration point (X/Y revert with imageio), horizion-X
-    pix1[267,264]=(0,255,0)
-    pix2[240,260]=(0,255,0)
+    pix1[267,264]=(0,255,0) #marker green
+    pix2[240,260]=(0,255, 0) #marker blue
+    
     #fl = calculate_focus(640.0, 400.0, 267, 240, 80.0, 1200.0) #manual measure distance 120.0CM, len_d=8.0CM
     calculate_distance(640.0, 400.0, 267, 240, 80.0, 400.0, -0.2) # (bed pole)
     x,y,z = calculate_pos(640.0, 400.0, 267, 264, 400.0, 1203.0) #
@@ -171,14 +275,54 @@ def image_read(show=False):
     p3 =[x,y,z]
     
     print ''
-    x,y,val = calculate_match(pix1, pix2,267, 264, -4) 
+    im_p1g = Image.new('F', (640,400))
+    im_p2g = Image.new('F', (640,400))
+    p1g = im_p1g.load()
+    p2g = im_p2g.load()
+    for j in range(640):
+        for k in range(400):
+            p1g[j,k] = rgb2gray(*pix1[j, k])
+            p2g[j,k] = rgb2gray(*pix2[j, k])
+    p1g = normalize_im(p1g, 640, 400)
+    p2g = normalize_im(p2g, 640, 400)
+    x,y,val = calculate_match(p1g, p2g,267, 264, -4)
+    x,y,val = calculate_match(p1g, p2g,318, 307, -4)
+    x,y,val = calculate_match(p1g, p2g,474, 305, -4)
+    if False:
+        im3 = Image.new('RGB', (11, 11))
+        im4 = Image.new('RGB', (11, 11))
+        #im3 = Image.new('F', (11, 11))
+        #im4 = Image.new('F', (11, 11))
+        ld3 = im3.load()
+        ld4 = im4.load()
+        for i in range(11):
+            for j in range(11):
+                ld3[i,j] = pix1[267-5+i, 264-5+j]
+                ld4[i,j] = pix2[240-5+i, 260-5+j]
+                #ld3[i,j] = rgb2gray(*pix1[267-5+i, 264-5+j])
+                #ld4[i,j] = rgb2gray(*pix2[240-5+i, 259-5+j])
+        fig = pylab.figure()
+        pylab.imshow(im3)
+        fig = pylab.figure()
+        pylab.imshow(im4)
+        pylab.show()
+        return
     
     ps = [p1,p2,p3]
     print ps
+    
+    res = match_lr(p1g, p2g, 640, 400, -4, 10)
+    res.sort(key=lambda x:x[4]) #get some threshold
+    for x1,y1,x2,y2,val in res[:10000]:
+        if x1==x2: continue
+        d = calculate_distance(640.0, 400.0, x1, x2, 80.0, 400.0, -0.2)
+        x,y,z = calculate_pos(640.0, 400.0, x1, y1, 400.0, d)
+        ps.append([x,y,z])
+
     draw2(ps)
     if True:
       plt.show()
-      return
+    return
 
     '''
     print pix1[1150,305]
@@ -189,9 +333,9 @@ def image_read(show=False):
     '''
     if show:
         fig = pylab.figure()
-        pylab.imshow(im1)
+        pylab.imshow(im_p1g) #pylab.imshow(im1)
         fig = pylab.figure()
-        pylab.imshow(im2)
+        pylab.imshow(im_p2g)
         pylab.show()
     return pix1, pix2
  
