@@ -29,7 +29,7 @@ heatmap = [
 ]
 
 #revese heatmap
-heatmap = heatmap[:-3]
+#heatmap = heatmap[:-3]
 
 def rgb2gray(R,G,B):
     return 0.21*R + 0.72*G + 0.07*B
@@ -186,17 +186,25 @@ def calculate_match(px1, px2, x1, y1, y_offset, edge=10, max_right=100, verbose=
         sad, hd = calculate_diff2(px1, px2, x1-edge, y1-edge, x1-i-edge, y2-edge, bsz)
         res.append([i, sad, hd])
     #res.sort(key=lambda x:x[1])
-    res = heapq.nsmallest(2, res, key=lambda x:x[1])
+    if verbose:
+        res = heapq.nsmallest(5, res, key=lambda x:x[1])
+        print res[:5]
+    else:
+        res = heapq.nsmallest(5, res, key=lambda x:x[1])
     i,val, _ = res[0]
 
     di = 0
     for k in range(2):
         di += res[k][0]
     di = int(di/2.0)
+    if abs(di - res[0][0]) >2: #too explicit
+        di = res[0][0]
     x2 = x1-di
 
     if verbose:
         print "match left xy {0:.2f}/{1:.2f} to right {2:.2f}/{3:.2f}, val {4:.2f}".format(x1, y1, x2, y2, val)
+    if len(res) >3 and abs(res[3][0]- res[0][0])/(res[0][0]+1.0) < 0.1:
+        return None, None, None
     return x2,y2,val
 
 #ouput 3D PC, zero in left lens
@@ -215,6 +223,7 @@ def match_lr(em1, px1, px2, w, h, y_offset, edge=10):
                 pr_t = now
             if em1[j][i] == 0: continue
             mi, mj, val = calculate_match(px1, px2, i, j, y_offset, edge, 50) #100
+            if not mi: continue
             res.append([i, j, mi, mj, val])
     return res
 
@@ -305,6 +314,8 @@ def image_read(show=False):
     x,y,val = calculate_match(p1g, p2g,267, 264, -4)
     x,y,val = calculate_match(p1g, p2g,318, 307, -4)
     x,y,val = calculate_match(p1g, p2g,474, 305, -4)
+    x,y,val = calculate_match(p1g, p2g,470, 154, -4, verbose=True)
+    x,y,val = calculate_match(p1g, p2g,319, 97, -4, verbose=True)
     if False:
         im3 = Image.new('RGB', (11, 11))
         im4 = Image.new('RGB', (11, 11))

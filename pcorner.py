@@ -48,7 +48,7 @@ img = cv2.imread(filename,0)
 #edges = cv2.Canny(img,100,200)
 edges = cv2.Canny(img,50,100)
 
-import pdb; pdb.set_trace()
+#import pdb; pdb.set_trace()
 plt.subplot(121),plt.imshow(img,cmap = 'gray')
 plt.title('Original Image'), plt.xticks([]), plt.yticks([])
 #plt.subplot(122),plt.imshow(edges,cmap = 'gray')
