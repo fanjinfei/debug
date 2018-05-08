@@ -5,6 +5,7 @@ import heapq
 import pylab
 import imageio #read video
 from PIL import Image #read image
+import cv2
 import rasl #image alignment
 
 import matplotlib.pyplot as plt
@@ -145,6 +146,9 @@ def calculate_diff(pix1, pix2, size=9): #9X9 square, SAD- sum of absolute differ
     #    hd += abs(hist1[i] - hist2[i])
     return d, hd
 
+lt_cache = numpy.empty((640, 400))
+rg_cache = numpy.empty((640, 400))
+
 def calculate_diff2(pix1, pix2, x1, y1, x2, y2, size=9): #9X9 square, SAD- sum of absolute difference
     d = 0
     for i in range(size):
@@ -154,6 +158,8 @@ def calculate_diff2(pix1, pix2, x1, y1, x2, y2, size=9): #9X9 square, SAD- sum o
 
 #input: left/right image, left p1(x1,y1), y_offset + y1 = y2
 #output:match p2(x2,y2), val(confidence)
+lf_cache = numpy.empty((640, 480))
+rg_cache = numpy.empty((640, 480))
 def calculate_match(px1, px2, x1, y1, y_offset, edge=10, max_right=100, verbose=False): 
     w,h = 640,400
     #edge = 10 #2*edge+1 = block size
@@ -182,9 +188,24 @@ def calculate_match(px1, px2, x1, y1, y_offset, edge=10, max_right=100, verbose=
         sad, hd = calculate_diff(a, b, bsz)
         res.append([i, sad, hd])
     '''
+    if lt_cache[x1][y1] == 0:
+        for l in range(y1-edge, y1+edge):
+            for m in range(x1-edge, x1+edge):
+                lt_cache[x1][y1] += px1[m, l] #block average
+
     for i in range(max_shift):
+        if rg_cache[x1-i][y2] == 0:
+            for l in range(y2-edge, y2+edge):
+                for m in range(x1-i-edge, x1-i+edge):
+                    rg_cache[x1-i][y2] += px2[m, l] #block average
+        
+        if abs(lt_cache[x1][y1] - rg_cache[x1-i][y2]) > 5000:
+            res.append([i, 7000, 0])
+            continue
         sad, hd = calculate_diff2(px1, px2, x1-edge, y1-edge, x1-i-edge, y2-edge, bsz)
         res.append([i, sad, hd])
+        if sad < 2000 and len(res)>2:
+            break
     #res.sort(key=lambda x:x[1])
     if verbose:
         res = heapq.nsmallest(5, res, key=lambda x:x[1])
@@ -216,13 +237,23 @@ def match_lr(em1, px1, px2, w, h, y_offset, edge=10):
     pr_t = time.time()
     for j in range(16, h-edge-2):
         for i in range(14, w-edge-2):
+            continue
+            # very slow on python cpu
+            for l in range(j-edge, j+edge):
+                for m in range(i-edge, i+edge):
+                    lt_cache[i][j] += px1[m, l] #block average
+                    rg_cache[i][j] += px2[m, l]
+
+    for j in range(16, h-edge-2):
+        for i in range(14, w-edge-2):
             count += 1
             if count %1000 == 0:
                 now = time.time()
                 print count, "{0:.2f}".format(now-pr_t)
                 pr_t = now
             if em1[j][i] == 0: continue
-            mi, mj, val = calculate_match(px1, px2, i, j, y_offset, edge, 50) #100
+            mi, mj, val = calculate_match(px1, px2, i, j, y_offset, edge, 100) #100
+            if val > 6000: continue
             if not mi: continue
             res.append([i, j, mi, mj, val])
     return res
@@ -275,9 +306,95 @@ def get_edges(img_file, sigma, t, T):
     img = tracking(img, weak)
     return img
 
+def detect_blob(frame):
+    # Switch image from BGR colorspace to HSV
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    
+    # define range of purple color in HSV
+    purpleMin = (115,50,10)
+    purpleMax = (160, 255, 255)
+    purpleMin = (150,150,150)
+    purpleMax = (255, 255, 255)
+    
+    # Sets pixels to white if in purple range, else will be set to black
+    mask = cv2.inRange(hsv, purpleMin, purpleMax)
+    
+    # Bitwise-AND of mask and purple only image - only used for display
+    res = cv2.bitwise_and(frame, frame, mask= mask)
+
+#    mask = cv2.erode(mask, None, iterations=1)
+    # commented out erode call, detection more accurate without it
+
+    # dilate makes the in range areas larger
+    mask = cv2.dilate(mask, None, iterations=1)    
+    
+    # Set up the SimpleBlobdetector with default parameters.
+    params = cv2.SimpleBlobDetector_Params()
+     
+    # Change thresholds
+    params.minThreshold = 0;
+    params.maxThreshold = 256;
+     
+    # Filter by Area.
+    params.filterByArea = True
+    params.minArea = 30
+     
+    # Filter by Circularity
+    '''
+    params.filterByCircularity = True
+    params.minCircularity = 0.1
+     
+    # Filter by Convexity
+    params.filterByConvexity = True
+    params.minConvexity = 0.5
+     
+    # Filter by Inertia
+    params.filterByInertia =True
+    params.minInertiaRatio = 0.5
+    '''
+     
+    detector = cv2.SimpleBlobDetector_create(params)
+    
+    # Detect blobs.
+    reversemask=255-mask
+    keypoints = detector.detect(reversemask)
+    if keypoints:
+        print "found %d blobs" % len(keypoints)
+        if len(keypoints) > 4:
+            # if more than four blobs, keep the four largest
+            keypoints.sort(key=(lambda s: s.size))
+            keypoints=keypoints[0:3]
+    else:
+        print "no blobs"
+ 
+    # Draw green circles around detected blobs
+    im_with_keypoints = cv2.drawKeypoints(frame, keypoints, np.array([]), (0,255,0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        
+    # open windows with original image, mask, res, and image with keypoints marked
+    cv2.imshow('frame',frame)
+    cv2.imshow('mask',mask)
+    cv2.imshow('res',res)     
+    cv2.imshow("Keypoints for", im_with_keypoints)
+
+    k = cv2.waitKey(20000)
+    cv2.destroyAllWindows()
+    return None
+
+#too slow for pixel matching
+#try to match large block
+def mblob_detect(frame): #detect large 20X20 sub-block similarity
+
+
 def image_read(show=False):
     im1 = Image.open('/tmp/a.jpg') #left
     e_im1 = get_edges('/tmp/a.jpg', 1.4, 20, 40) #left
+
+    if True:
+        orig_img = cv2.imread('/tmp/a.jpg')
+        frame=cv2.GaussianBlur(orig_img, (3, 3), 0)
+        return detect_blob(frame)
+        
+    
     im2 = Image.open('/tmp/b.jpg') #left
     pix1, pix2 = im1.load(), im2.load()
 
@@ -338,10 +455,12 @@ def image_read(show=False):
     
     ps = [p1,p2,p3]
     print ps
-    
-    res = match_lr(e_im1, p1g, p2g, 640, 400, -4, 10)
-    res.sort(key=lambda x:x[4]) #get some threshold
-    if False:
+
+    match = True
+    if match:
+        res = match_lr(e_im1, p1g, p2g, 640, 400, -4, 10)
+        res.sort(key=lambda x:x[4]) #get some threshold
+    if False: #matplit 3D -- too slow
         for x1,y1,x2,y2,val in res[:10000]:
             if x1==x2: continue
             d = calculate_distance(640.0, 400.0, x1, x2, 80.0, 400.0, -0.2)
@@ -350,7 +469,7 @@ def image_read(show=False):
 
         draw2(ps)
         plt.show()
-    if True:
+    if match:
         imd = Image.new('RGB', (640, 400))
         ld = imd.load()
 
