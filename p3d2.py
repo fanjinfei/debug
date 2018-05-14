@@ -125,27 +125,6 @@ def normalize_im(px, w, h):
             px[i,j] = (px[i,j]-mn1)/(mx2-mn1)*255.0
     return px
 
-def calculate_diff(pix1, pix2, size=9): #9X9 square, SAD- sum of absolute difference
-    d = 0
-    hd = 0
-    '''
-    hist1 = {}
-    hist2 = {}
-    def init_hist(h):
-        for i in range(256):
-            h[i] = 0
-    init_hist(hist1)
-    init_hist(hist2)
-    '''
-    for i in range(size):
-        for j in range(size):
-            d += abs(pix1[i][j] - pix2[i][j])
-            #hist1[int(pix1[i][j])] += 1
-            #hist2[int(pix2[i][j])] += 1
-    #for i in range(256):
-    #    hd += abs(hist1[i] - hist2[i])
-    return d, hd
-
 lt_cache = numpy.empty((640, 400))
 rg_cache = numpy.empty((640, 400))
 
@@ -154,12 +133,19 @@ def calculate_diff2(pix1, pix2, x1, y1, x2, y2, size=9): #9X9 square, SAD- sum o
     for i in range(size):
         for j in range(size):
             d += abs(pix1[x1+i, y1+j] - pix2[x2+i, y2+j])
-    return d, 0
+    return d, 0 #histogram diff?
+
+def calculate_diff3(pix1, pix2, x1, y1, x2, y2, w=9, h =9): #rectangle, SAD- sum of absolute difference
+    d = 0
+    for i in range(w):
+        for j in range(h):
+            d += abs(pix1[x1+i, y1+j] - pix2[x2+i, y2+j])**2
+    return d, 0 #histogram diff?
 
 #input: left/right image, left p1(x1,y1), y_offset + y1 = y2
 #output:match p2(x2,y2), val(confidence)
-lf_cache = numpy.empty((640, 480))
-rg_cache = numpy.empty((640, 480))
+lf_cache = numpy.empty((640, 400))
+rg_cache = numpy.empty((640, 400))
 def calculate_match(px1, px2, x1, y1, y_offset, edge=10, max_right=100, verbose=False): 
     w,h = 640,400
     #edge = 10 #2*edge+1 = block size
@@ -169,30 +155,13 @@ def calculate_match(px1, px2, x1, y1, y_offset, edge=10, max_right=100, verbose=
     threshold = 0.0 #mininum matching
     res = []
     max_shift = min(max_right, x1-edge-1)
-    '''
-    a = numpy.empty((bsz, bsz))
-    b = numpy.empty((bsz, bsz))
-    for j in range(bsz):
-        for k in range(bsz):
-            #a[j][k] = rgb2gray(*px1[x1-edge+j, y1-edge+k])
-            a[j][k] = px1[x1-edge+j, y1-edge+k]
-    for i in range(max_shift):
-        x0 = x1-i-edge  #right is more on left side
-        for j in range(bsz):
-            for k in range(bsz):
-                #b[j][k] = rgb2gray(*px2[x0+j, y2-edge+k])
-                try:
-                    b[j][k] = px2[x0+j, y2-edge+k]
-                except IndexError:
-                    print j, k, x1, y1, x0, y2
-        sad, hd = calculate_diff(a, b, bsz)
-        res.append([i, sad, hd])
-    '''
+
     if lt_cache[x1][y1] == 0:
         for l in range(y1-edge, y1+edge):
             for m in range(x1-edge, x1+edge):
                 lt_cache[x1][y1] += px1[m, l] #block average
 
+    win_h = 3
     for i in range(max_shift):
         if rg_cache[x1-i][y2] == 0:
             for l in range(y2-edge, y2+edge):
@@ -202,7 +171,8 @@ def calculate_match(px1, px2, x1, y1, y_offset, edge=10, max_right=100, verbose=
         if abs(lt_cache[x1][y1] - rg_cache[x1-i][y2]) > 5000:
             res.append([i, 7000, 0])
             continue
-        sad, hd = calculate_diff2(px1, px2, x1-edge, y1-edge, x1-i-edge, y2-edge, bsz)
+        #sad, hd = calculate_diff2(px1, px2, x1-edge, y1-edge, x1-i-edge, y2-edge, bsz)
+        sad, hd = calculate_diff3(px1, px2, x1-edge, y1-1, x1-i-edge, y2-1, bsz, 3)
         res.append([i, sad, hd])
         if sad < 2000 and len(res)>2:
             break
@@ -234,6 +204,7 @@ def match_lr(em1, px1, px2, w, h, y_offset, edge=10):
     #do not calculate the edge size(10)
     res = []
     count = 0
+    count_e = 0
     pr_t = time.time()
     for j in range(16, h-edge-2):
         for i in range(14, w-edge-2):
@@ -247,15 +218,17 @@ def match_lr(em1, px1, px2, w, h, y_offset, edge=10):
     for j in range(16, h-edge-2):
         for i in range(14, w-edge-2):
             count += 1
-            if count %1000 == 0:
+            if count %10000 == 0:
                 now = time.time()
                 print count, "{0:.2f}".format(now-pr_t)
                 pr_t = now
             if em1[j][i] == 0: continue
+            count_e += 1
             mi, mj, val = calculate_match(px1, px2, i, j, y_offset, edge, 100) #100
             if val > 6000: continue
             if not mi: continue
             res.append([i, j, mi, mj, val])
+    print 'count edge points', count_e
     return res
 
 def draw2(ps):
@@ -388,6 +361,13 @@ def mblob_detect(frame): #detect large 20X20 sub-block similarity
 def image_read(show=False):
     im1 = Image.open('/tmp/a.jpg') #left
     e_im1 = get_edges('/tmp/a.jpg', 1.4, 20, 40) #left
+    c = 0
+    for i in range(400):
+        for j in range(640):
+            if e_im1[i][j] != 0:
+                c +=1 
+    print (c)
+    
 
     if False:
         orig_img = cv2.imread('/tmp/a.jpg')
@@ -429,11 +409,10 @@ def image_read(show=False):
     p1g = normalize_im(p1g, 640, 400)
     p2g = normalize_im(p2g, 640, 400)
     x,y,val = calculate_match(p1g, p2g,267, 264, -4)
-    x,y,val = calculate_match(p1g, p2g,318, 307, -4, verbose=True)
+    x,y,val = calculate_match(p1g, p2g,318, 307, -4)
     x,y,val = calculate_match(p1g, p2g,474, 305, -4)
     x,y,val = calculate_match(p1g, p2g,470, 154, -4, verbose=True)
     x,y,val = calculate_match(p1g, p2g,319, 97, -4, verbose=True)
-    return
     if False:
         im3 = Image.new('RGB', (11, 11))
         im4 = Image.new('RGB', (11, 11))
@@ -452,7 +431,7 @@ def image_read(show=False):
         fig = pylab.figure()
         pylab.imshow(im4)
         pylab.show()
-        return
+    return
     
     ps = [p1,p2,p3]
     print ps
@@ -470,7 +449,18 @@ def image_read(show=False):
 
         draw2(ps)
         plt.show()
-    if match:
+    if False: #display original edge only
+        imd = Image.new('RGB', (640, 400))
+        ld = imd.load()
+        for i in range(400):
+            for j in range(640):
+                if e_im1[i][j] != 0:
+                    ld[j, i] = (200,200,200)
+        fig = pylab.figure()
+        pylab.imshow(imd)
+        pylab.show()
+
+    if True:
         imd = Image.new('RGB', (640, 400))
         ld = imd.load()
 
