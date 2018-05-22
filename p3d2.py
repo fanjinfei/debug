@@ -4,9 +4,15 @@ import numpy as np
 import heapq
 import pylab
 import imageio #read video
-from PIL import Image #read image
+from PIL import Image, ImageEnhance #read image
+from PIL import ImageFilter #read image
 import cv2
 import rasl #image alignment
+
+import p3match
+#rebuild p3match:  pip install Cython
+#cypthon p3match.pyx;
+#gcc -shared -pthread -fPIC -fwrapv -O2 -Wall -fno-strict-aliasing -I/usr/include/python2.7 -o p3match.so p3match.c
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -30,7 +36,12 @@ heatmap = [
 ]
 
 #revese heatmap
-#heatmap = heatmap[:-3]
+#heatmap = heatmap[1:3]
+#heatmap = heatmap[::-1]
+h2 = []
+for i in range(len(heatmap)):
+    h2.append([heatmap[i][0], heatmap[-i-1][1]])
+heatmap = h2
 
 def rgb2gray(R,G,B):
     return 0.21*R + 0.72*G + 0.07*B
@@ -115,11 +126,11 @@ def normalize_px(px, w, h):
     return px2
 
 def normalize_im(px, w, h):
-    mx1, mx2=0,0
+    mn1, mx2=0,0
     for i in range(w):
         for j in range(h):
             mx2 = max(mx2, px[i,j])
-            mn1 = min(mx1, px[i,j])
+            mn1 = min(mn1, px[i,j])
     for i in range(w):
         for j in range(h):
             px[i,j] = (px[i,j]-mn1)/(mx2-mn1)*255.0
@@ -156,25 +167,26 @@ def calculate_match(px1, px2, x1, y1, y_offset, edge=10, max_right=100, verbose=
     res = []
     max_shift = min(max_right, x1-edge-1)
 
-    if lt_cache[x1][y1] == 0:
+    if lt_cache[x1][y1] == 0 and False:
         for l in range(y1-edge, y1+edge):
             for m in range(x1-edge, x1+edge):
                 lt_cache[x1][y1] += px1[m, l] #block average
 
     win_h = 3
     for i in range(max_shift):
-        if rg_cache[x1-i][y2] == 0:
+        if rg_cache[x1-i][y2] == 0 and False:
             for l in range(y2-edge, y2+edge):
                 for m in range(x1-i-edge, x1-i+edge):
                     rg_cache[x1-i][y2] += px2[m, l] #block average
         
-        if abs(lt_cache[x1][y1] - rg_cache[x1-i][y2]) > 5000:
+        if False and abs(lt_cache[x1][y1] - rg_cache[x1-i][y2]) > 5000:
             res.append([i, 7000, 0])
             continue
         #sad, hd = calculate_diff2(px1, px2, x1-edge, y1-edge, x1-i-edge, y2-edge, bsz)
-        sad, hd = calculate_diff3(px1, px2, x1-edge, y1-1, x1-i-edge, y2-1, bsz, 3)
+        #sad, hd = calculate_diff3(px1, px2, x1-edge, y1-1, x1-i-edge, y2-1, bsz, 3)
+        sad, hd = calculate_diff3(px1, px2, x1-edge, y1, x1-i-edge, y2, bsz, 1)
         res.append([i, sad, hd])
-        if sad < 2000 and len(res)>2:
+        if sad < 10 and len(res)>2:
             break
     #res.sort(key=lambda x:x[1])
     if verbose:
@@ -199,7 +211,7 @@ def calculate_match(px1, px2, x1, y1, y_offset, edge=10, max_right=100, verbose=
     return x2,y2,val
 
 #ouput 3D PC, zero in left lens
-def match_lr(em1, px1, px2, w, h, y_offset, edge=10):
+def match_lr(em1, array, px1, px2, w, h, y_offset, edge=10):
     #match each of the p1 in px1 to p2 in px2, sort them in order
     #do not calculate the edge size(10)
     res = []
@@ -220,7 +232,7 @@ def match_lr(em1, px1, px2, w, h, y_offset, edge=10):
             count += 1
             if count %10000 == 0:
                 now = time.time()
-                print count, "{0:.2f}".format(now-pr_t)
+                #print count, "{0:.2f}".format(now-pr_t)
                 pr_t = now
             if em1[j][i] == 0: continue
             count_e += 1
@@ -277,6 +289,13 @@ def get_edges(img_file, sigma, t, T):
     img = suppression(img, D)
     img, weak = threshold(img, t, T)
     img = tracking(img, weak)
+    return img
+
+def pre_process(px, sigma=1.4):
+    img = px.astype('int32')
+    img = gs_filter(img, sigma)
+    img, D = gradient_intensity(img)
+    #img = suppression(img, D)
     return img
 
 def detect_blob(frame):
@@ -353,13 +372,82 @@ def detect_blob(frame):
     cv2.destroyAllWindows()
     return None
 
-#too slow for pixel matching
-#try to match large block
-def mblob_detect(frame): #detect large 20X20 sub-block similarity
-    pass
+def normalize_hot(px, w, h):
+    mx1, mx2=100000,0
+    for i in range(w):
+        for j in range(h):
+            if px[i,j] <10: continue
+            mx2 = max(mx2, px[i,j])
+            mx1 = min(mx1, px[i,j])
+    mx1,mx2 = 2000, 5000
+    print mx1, mx2
+    for i in range(w):
+        for j in range(h):
+            px[i,j] = (px[i,j]-mx1)/(mx2-mx1)*255.0
+    return px
 
-def image_read(show=False):
+
+#match whole line (x1_i,y1) -> (x2, y2), some of the (x1_i, y1) maybe hidden (on left half) 
+def calculate_match_line(px1, px2, y1, y_offset, edge=10, max_right=100, verbose=False): 
+    w,h = 640,400
+    bsz = 2*edge +1
+    y2 = y1+y_offset
+    rline = np.zeros((w))
+    delta = np.zeros((w))
+    grs = np.zeros((w))
+    dval = {}
+    for i in range(w):
+        rline[i] = -1
+    for i in range(w-1):
+        delta[i] = abs(px1[i,y1] - px1[i+1, y1])
+    for x1 in range(w-1-edge-100, 100, -1):
+        rs = [delta[x1-1], delta[x1]]
+        r1,r2 = min(rs), max(rs)
+        #if r2 < 8: continue
+        if r1 <0.5: r1 = 0.2
+        gr = r2/r1
+        if gr <10 or r2 < 15: continue
+        grs[x1] = r2
+    right_start = w
+    #for x1 in range(w-1-edge, -1, -1): #im_left to im_right, from far right
+    for x1 in range(w-1-edge-100, 100, -1): #im_left to im_right, from far right
+        #round 1: significant pixel
+        if max(grs[x1-5: x1+5]) < 1: continue
+        
+        res = []
+        #for x2 in range(x1,max(edge+1,x1-max_right), -1):
+        for x2 in range(min(x1, right_start),max(edge+1,x1-max_right), -1):
+            val = 0
+            for j in range(0-edge, edge+1):
+                val += abs(px1[x1+j,y1] - px2[x2+j, y2])
+            res.append([x2,val])
+        if not res: continue
+        res = heapq.nsmallest(3, res, key=lambda x:x[1])
+        #if x1==482: print 'pix 482:', res[:3]
+        #if x1==253: print 'pix 253:', res[:3]
+        #if x1==442: print 'pix 442:', res[:3]
+        x2,val = res[0]
+        #x3,val3 = res[2]
+        rline[x1] = x2
+        dval[x1] = val
+        right_start=x2-1
+
+    for x1 in range(w-1-edge-100, 100, -1): #im_left to im_right, from far right
+        #round 2:blanc pixel
+        if rline[x1] != -1: continue
+
+    if verbose:
+        print "match line:", y1
+        for x in [253, 442, 248]:
+            print 'rline {0} {1}:{2}'.format(x, rline[x], dval.get(x, -1))
+        for i in range(0,w):
+          if rline[i]!= -1:
+            pass#print 'rline {0} {1}:{2}'.format(i, rline[i], dval[i])
+    return rline
+
+def image_read(show=False, block=False):
     im1 = Image.open('/tmp/a.jpg') #left
+    im1.filter(ImageFilter.SHARPEN)
     e_im1 = get_edges('/tmp/a.jpg', 1.4, 20, 40) #left
     c = 0
     for i in range(400):
@@ -376,6 +464,7 @@ def image_read(show=False):
         
     
     im2 = Image.open('/tmp/b.jpg') #left
+    im2.filter(ImageFilter.SHARPEN)
     pix1, pix2 = im1.load(), im2.load()
 
     #test calibration point (X/Y revert with imageio), horizion-X
@@ -383,7 +472,7 @@ def image_read(show=False):
     pix2[240,260]=(0,255, 0) #marker blue
     
     #fl = calculate_focus(640.0, 400.0, 267, 240, 80.0, 1200.0) #manual measure distance 120.0CM, len_d=8.0CM
-    calculate_distance(640.0, 400.0, 267, 240, 80.0, 400.0, -0.2) # (bed pole)
+    calculate_distance(640.0, 400.0, 267, 240, 80.0, 400.0, -0.2, verbose=True) # (bed pole)
     x,y,z = calculate_pos(640.0, 400.0, 267, 264, 400.0, 1203.0) #
     p1 = [x,y,z]
     
@@ -412,7 +501,38 @@ def image_read(show=False):
     x,y,val = calculate_match(p1g, p2g,318, 307, -4)
     x,y,val = calculate_match(p1g, p2g,474, 305, -4)
     x,y,val = calculate_match(p1g, p2g,470, 154, -4, verbose=True)
-    x,y,val = calculate_match(p1g, p2g,319, 97, -4, verbose=True)
+    x,y,val = calculate_match(p1g, p2g,253, 97, -4, verbose=True)
+    
+    rline = calculate_match_line(p1g, p2g,97, -4, verbose=True)
+    rline = calculate_match_line(p1g, p2g,270, -4, verbose=True)
+    if not block: #match all
+        out = np.zeros([640, 400], dtype = np.intc)
+        imd = Image.new('RGB', (640, 400))
+        ld = imd.load()
+        match_start = time.time()
+        for y1 in range(4,400):
+            rl = calculate_match_line(p1g, p2g,y1, -4)
+            for j in range(0,640):
+                if rl[j]!= -1: out[j,y1] = rl[j]
+        match_dur = time.time() - match_start
+        print "match time ", "{0:.2f}".format(match_dur)
+        
+        for x1 in range(640):
+          for y1 in range(400):
+            x2 = out[x1,y1]
+            if x2==0: continue
+            d = calculate_distance(640.0, 400.0, x1, x2, 80.0, 400.0, -0.2)
+            r, g, b = pixel(d, width=4000, map=heatmap)
+            r, g, b = [int(256*v) for v in (r, g, b)]
+            #r = int(gaussian(x, 158.8242, 201, 87.0739) + gaussian(x, 158.8242, 402, 87.0739))
+            #g = int(gaussian(x, 129.9851, 157.7571, 108.0298) + gaussian(x, 200.6831, 399.4535, 143.6828))
+            #b = int(gaussian(x, 231.3135, 206.4774, 201.5447) + gaussian(x, 17.1017, 395.8819, 39.3148))
+            ld[x1, y1] = (r, g, b)
+        fig = pylab.figure()
+        pylab.imshow(imd)
+        pylab.show()
+        return
+    
     if False:
         im3 = Image.new('RGB', (11, 11))
         im4 = Image.new('RGB', (11, 11))
@@ -431,15 +551,28 @@ def image_read(show=False):
         fig = pylab.figure()
         pylab.imshow(im4)
         pylab.show()
-    return
+        return
     
     ps = [p1,p2,p3]
     print ps
 
-    match = True
+    match = block
+    match_start = time.time()
     if match:
-        res = match_lr(e_im1, p1g, p2g, 640, 400, -4, 10)
-        res.sort(key=lambda x:x[4]) #get some threshold
+        match_start = time.time()
+        array = numpy.empty((640, 400))
+        p1a = numpy.empty((640, 400), dtype=np.intc)
+        p2a = numpy.empty((640, 400), dtype=np.intc)
+        for i in range(640):
+            for j in range(400):
+                p1a[i,j] = int(p1g[i,j])
+                p2a[i,j] = int(p2g[i,j])
+        #res = match_lr(e_im1, array, p1g, p2g, 640, 400, -4, 10)
+        out = p3match.match_lr(e_im1,array,p1a, p2a, 640, 400, -4, 10)
+        match_dur = time.time() - match_start
+        print "match time ", "{0:.2f}".format(match_dur)
+
+        #res.sort(key=lambda x:x[4]) #get some threshold
     if False: #matplit 3D -- too slow
         for x1,y1,x2,y2,val in res[:10000]:
             if x1==x2: continue
@@ -460,12 +593,32 @@ def image_read(show=False):
         pylab.imshow(imd)
         pylab.show()
 
-    if True:
+    if False:
         imd = Image.new('RGB', (640, 400))
         ld = imd.load()
 
         for x1,y1,x2,y2,val in res[:10000]:
             if x1==x2: continue
+            d = calculate_distance(640.0, 400.0, x1, x2, 80.0, 400.0, -0.2)
+            r, g, b = pixel(d, width=3000, map=heatmap)
+            r, g, b = [int(256*v) for v in (r, g, b)]
+            #r = int(gaussian(x, 158.8242, 201, 87.0739) + gaussian(x, 158.8242, 402, 87.0739))
+            #g = int(gaussian(x, 129.9851, 157.7571, 108.0298) + gaussian(x, 200.6831, 399.4535, 143.6828))
+            #b = int(gaussian(x, 231.3135, 206.4774, 201.5447) + gaussian(x, 17.1017, 395.8819, 39.3148))
+            ld[x1, y1] = (r, g, b)
+        fig = pylab.figure()
+        pylab.imshow(imd)
+        pylab.show()
+        return
+
+    if block:
+        imd = Image.new('RGB', (640, 400))
+        ld = imd.load()
+
+        for x1 in range(640):
+          for y1 in range(400):
+            x2 = out[x1,y1]
+            if x2==0: continue
             d = calculate_distance(640.0, 400.0, x1, x2, 80.0, 400.0, -0.2)
             r, g, b = pixel(d, width=3000, map=heatmap)
             r, g, b = [int(256*v) for v in (r, g, b)]
@@ -503,9 +656,73 @@ def use_pil():
     print im.size #Get the width and hight of the image for iterating over
     print pix[x,y] #Get the RGBA Value of the a pixel of an image
 
+def show_test():
+    im1 = Image.open('/tmp/a.jpg') #left
+    im2 = Image.open('/tmp/b.jpg') #right
+    #im1 = ImageEnhance.Contrast(im1)
+    #im1.enhance(2).show()
+    #pix1, pix2 = im1.enhance(2).load(), im2.load()
+    pix1, pix2 = im1.load(), im2.load()
+
+    im3 = Image.new('F', (640,400))
+    im4 = Image.new('F', (640,400))
+    #im3.filter(ImageFilter.SHARPEN)
+    #im4.filter(ImageFilter.SHARPEN)
+    p1g = im3.load()
+    p2g = im4.load()
+    
+    for i in range(640):
+        for j in range(400):
+            p1g[i,j] = rgb2gray(*pix1[i,j])
+            p2g[i,j] = rgb2gray(*pix2[i,j])
+    for i in range(20,30):
+        print p2g[i,94]
+    fig = pylab.figure()
+    pylab.imshow(im3)
+    fig = pylab.figure()
+    pylab.imshow(im4)
+    pylab.show()
+
+def show_test_blur():
+    from scipy import misc
+    #im1 = Image.open('/tmp/a.jpg', flatten=True) #left
+    #im2 = Image.open('/tmp/b.jpg', flatten=True) #right
+    #pix1, pix2 = im1.load(), im2.load()
+    pix1 = misc.imread('/tmp/a.jpg', flatten=True)
+    pix2 = misc.imread('/tmp/b.jpg', flatten=True)
+
+    p11 = pre_process(pix1)
+    p22 = pre_process(pix2)
+
+    im3 = Image.new('F', (640,400))
+    im4 = Image.new('F', (640,400))
+    p1g = im3.load()
+    p2g = im4.load()
+    for i in range(270,290):
+        print 'blur', i, p11[i,100]
+    
+    for i in range(640):
+        for j in range(400):
+#            p1g[i,j] = rgb2gray(*pix1[i,j])
+#            p2g[i,j] = rgb2gray(*pix2[i,j])
+            break
+            p1g[i,j] = p11[i,j]
+            p2g[i,j] = p22[i,j]
+    for i in range(20,30):
+        print p2g[i,94]
+    fig = pylab.figure()
+    pylab.imshow(p11)
+    fig = pylab.figure()
+    pylab.imshow(p22)
+    pylab.show()
+    
 def main():
     #return gradient_color_demo()
-    return image_read(True)
+    if len(sys.argv)>1:
+        print sys.argv
+        if sys.argv[1]=='test':
+            return show_test()
+    return image_read(show=True, block=False)
 
     pix1, pix2 = image_read()
     cal_pos(pix1, pix2)
