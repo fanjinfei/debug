@@ -38,11 +38,11 @@ heatmap = [
 
 heatmap = [
     [0.0, (1, 0, 0)],
-    [0.20, (0.8, 0, 0)],
-    [0.40, (0.6, 0.5, 0)],
+    [0.20, (0.8, 0.2, 0.2)],
+    [0.40, (0.6, 0.5, 0.3)],
     [0.60, (.4, 0.6, 0.4)],
-    [0.80, (0, .75, 0.6)],
-    [0.90, (0, 0, 0.8)],
+    [0.80, (0.2, .75, 0.6)],
+    [0.90, (0.1, 0.8, 0.8)],
     [1.00, (0, 0, 1.0)],
 ]
 
@@ -176,17 +176,24 @@ def calculate_match_block(px1, px2, ix1, y1, y_offset, iw=40, ih=20, max_right=1
     if verbose:
         d = calculate_distance(640.0, 400.0, ix1, x2, 80.0, 400.0, -0.2)
         print 'block ({0},{3}) {1}: distance {2}mm, tangle-{4:.2f}'.format(ix1, x2, int(d), y1, d/(ix1-321))
-        print res[:5]
+        print iw, ih, res[:5]
     if abs(ix1-100)<5 and abs(y1-100) < 5:
        print "debug", val, ix1, y1, de
     if abs(ix1-320)<5 and abs(y1-80) < 5:
        print "debug", val, ix1, y1, de
     #if (val2-val)/val < 0.08 or val < 9000: #significant difference threshold
     if iw==40:
+        if val > 250000: return x2, -1 #sub
         if (val2-val)/val < 0.08 or val < 8000: #significant difference threshold
             return ix1, 0
     if iw==20:
-        pass
+        if val > 400000: return x2,-1 #sub-block
+        if (val2-val)/val < 0.04 or val < 4000:
+            return ix1, 0
+    if iw==10 and ih==10:
+        if val > 100000: return x2, -1 #occulsion
+        if (val2-val)/val < 0.2 or val < 500: #plain white color
+            return ix1, 0
     return x2,val
 
 def pre_process(px, sigma=1.4): #blur filter
@@ -214,8 +221,18 @@ def test_adiff(a1, a2, a3):
                 v += d*d
         return v
     print adiff(a1,a2), adiff(a1,a3) , adiff(a2,a3), adiff(a1,a1)
+    
+def fill_hgap(out, y1, bs, iw=40, ih=20):
+    x1,d1 = bs[0]
+    x2,d2 = bs[1]
+    if d1 ==0 or d2==0: #should look up/down
+        return
+    for x,d in bs[1:-1]: #middle-> left/right ?
+        pass
+    
 #sharp then 50X50 sub-block coarse match starting from 20X20
 def image_read(show=False, block=False):  
+    print 'pixel test:', pixel(80000, width=4500, map=heatmap)
     im1 = Image.open('/tmp/a.jpg') #left
     im2 = Image.open('/tmp/b.jpg') #right
     
@@ -287,6 +304,21 @@ def image_read(show=False, block=False):
     x2, val = calculate_match_block(p11, p22, 520, 364, -4, verbose=True)
     
     x2, val = calculate_match_block(p11, p22, 280, 324, -4, verbose=True)
+    
+    
+    calculate_match_block(p11, p22, 220, 304, -4, iw=20, ih=20, verbose=True) #
+    calculate_match_block(p11, p22, 220, 264, -4, iw=40, ih=20, verbose=True) #
+    calculate_match_block(p11, p22, 300, 264, -4, iw=40, ih=20, verbose=True) #
+
+    #left top montior
+    calculate_match_block(p11, p22, 120, 264, -4, iw=40, ih=20, verbose=True)
+    calculate_match_block(p11, p22, 120, 264, -4, iw=20, ih=20, verbose=True)
+    calculate_match_block(p11, p22, 120, 264, -4, iw=10, ih=10, verbose=True) #white sample
+    calculate_match_block(p11, p22, 120, 264+10, -4, iw=10, ih=10, verbose=True)
+    calculate_match_block(p11, p22, 120+10, 264, -4, iw=10, ih=10, verbose=True)
+    calculate_match_block(p11, p22, 120+10, 264+10, -4, iw=10, ih=10, verbose=True) #occlusion example
+
+    calculate_match_block(p11, p22, 290, 364, -4, iw=10, ih=10, verbose=True)
     #return
     
     if block: #match all
@@ -295,33 +327,84 @@ def image_read(show=False, block=False):
         ld = imd.load()
         match_start = time.time()
         iw,ih = 40,20
+        dx1,dy1=100,264
         for y1 in range(4, 380, 20):
-          for x1 in range(100, 600, 40):
+          for x1 in range(100, 600, 40): #40X20
             x2, val = calculate_match_block(p11, p22, x1, y1, -4)
             d = calculate_distance(640.0, 400.0, x1, x2, 80.0, 400.0, -0.2)
-            if d > 1500:
+            if x1==dx1 and y1==dy1:
+                print 'debug1 {0} {1}: '.format(dx1,dy1),  x2, val, d
+            if val==0: continue
+            if d > 1500 and val!=-1:
                 for i in range(iw):
                   for j in range(ih):
                     out[x1+i,y1+j] = d
             else: #look close object
-              for k in range(0, 40, 20):
+              for k in range(0, 40, 20): #20X20
                 x2, val = calculate_match_block(p11, p22, x1+k, y1, -4, iw=20, ih=20)
+                #if val > xxxx: It is occlusion; or need to divide to small block
                 d = calculate_distance(640.0, 400.0, x1+k, x2, 80.0, 400.0, -0.2)
-                for i in range(20):
-                  for j in range(ih):
-                    out[x1+k+i,y1+j] = d
+                #import pdb; pdb.set_trace()
+                if x1==dx1 and y1==dy1:
+                    print 'debug2 {0} {1}: '.format(dx1,dy1), x1+k, x2, val, d
+                if val==0: continue
+                if d> 900 and val!=-1:
+                  for i in range(20):
+                    for j in range(ih):
+                      out[x1+k+i,y1+j] = d
+                else: #use 10X10 block
+                    for l in range(0,20,10):
+                        for m in range(0,20,10):
+                            x2, val = calculate_match_block(p11, p22, x1+k+l, y1+m, -4, iw=10, ih=10)
+                            if x1==dx1 and y1==dy1:
+                                print 'debug3 {0} {1}: '.format(dx1,dy1), x1+k+l, x2, val, d
+                            if val ==-1 or val==0: #occlusion or white
+                                continue
+                            d = calculate_distance(640.0, 400.0, x1+k+l, x2, 80.0, 400.0, -0.2)
+                            if x1+k==120 and y1==264:
+                                print x1+k+l, y1+m, x1, val, d
+                            for i in range(10):
+                              for j in range(10):
+                                out[x1+k+l+i,y1+m+j] = d
+                  
+          left,right=0,0
+          bs = []
+          for x1 in range(100, 600, 40): #scan the empty block
+              d = out[x1,y1]
+              if out[x1,y1]!=0: #head or tail; or continous
+                  if bs:
+                      if len(bs)>1: #end of the empty gap
+                          bs.append([x1,d])
+                          #fix gap
+                          bs = []
+                      elif len(bs) == 1: #head
+                          if bs[-1][1] != 0:
+                              bs[0] = [x1,d]
+                          else:
+                              bs.append([x1,d])
+                              #fix gap
+                              bs=[]
+                  else: bs.append([x1,d]) #head
+              else: #gap
+                  bs.append([x1,d])
+        if bs: 
+            if bs[0][0] == 0: #whole line is empty
+                pass #TODO: look up and down neighbors
+            else: # right part
+                #fix right gap
+                pass
             
         match_dur = time.time() - match_start
         print "match time ", "{0:.2f}".format(match_dur)
         
-        for y1 in range(4, 380, 20):
-          for x1 in range(100, 600, 20):
+        for y1 in range(4, 380, 10):
+          for x1 in range(100, 600, 10):
             d = out[x1,y1]
             if d==0: continue
             r, g, b = pixel(d, width=4500, map=heatmap)
             r, g, b = [int(256*v) for v in (r, g, b)]
-            for i in range(iw):
-              for j in range(ih):
+            for i in range(10):
+              for j in range(10):
                 ld[x1+i, y1+j] = (r, g, b)
         fig = pylab.figure()
         pylab.imshow(imd)
