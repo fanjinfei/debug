@@ -141,6 +141,8 @@ def normalize_im(px, w, h):
 
 #match whole line (x1_i,y1) -> (x2, y2), some of the (x1_i, y1) maybe hidden (on left half) 
 #match block x1,y1, iw, ih(block) to right
+#return val=0: too plain, ignore whole block
+#       val=-1: too much infor, goto sub-block
 def calculate_match_block(px1, px2, ix1, y1, y_offset, iw=40, ih=20, max_right=100, verbose=False): 
     w,h=640,400
     # right start from x1, y2
@@ -181,14 +183,15 @@ def calculate_match_block(px1, px2, ix1, y1, y_offset, iw=40, ih=20, max_right=1
        print "debug", val, ix1, y1, de
     if abs(ix1-320)<5 and abs(y1-80) < 5:
        print "debug", val, ix1, y1, de
-    #if (val2-val)/val < 0.08 or val < 9000: #significant difference threshold
+    
+    if ix1-x2 < 2: return ix1,0 #too close
     if iw==40:
         if val > 250000: return x2, -1 #sub
-        if (val2-val)/val < 0.08 or val < 8000: #significant difference threshold
+        if (val2-val)/val < 0.1 or val < 9000 or val2 < 15000 : #significant difference threshold
             return ix1, 0
     if iw==20:
         if val > 400000: return x2,-1 #sub-block
-        if (val2-val)/val < 0.04 or val < 4000:
+        if (val2-val)/val < 0.1 or val < 4000:
             return ix1, 0
     if iw==10 and ih==10:
         if val > 100000: return x2, -1 #occulsion
@@ -222,13 +225,16 @@ def test_adiff(a1, a2, a3):
         return v
     print adiff(a1,a2), adiff(a1,a3) , adiff(a2,a3), adiff(a1,a1)
     
-def fill_hgap(out, y1, bs, iw=40, ih=20):
+def fill_hgap(out, y1, bs, iw=10, ih=10):
     x1,d1 = bs[0]
-    x2,d2 = bs[1]
+    x2,d2 = bs[-1]
+    dx = max(d1,d2)
     if d1 ==0 or d2==0: #should look up/down
         return
     for x,d in bs[1:-1]: #middle-> left/right ?
-        pass
+        for i in range(iw):
+            for j in range(ih):
+                out[x+i,y1+j] = dx
     
 #sharp then 50X50 sub-block coarse match starting from 20X20
 def image_read(show=False, block=False):  
@@ -305,6 +311,11 @@ def image_read(show=False, block=False):
     
     x2, val = calculate_match_block(p11, p22, 280, 324, -4, verbose=True)
     
+    #top ceiling
+    print "----"
+    calculate_match_block(p11, p22, 140, 4, -4, iw=40, ih=20, verbose=True) #
+
+    calculate_match_block(p11, p22, 280, 344, -4, iw=20, ih=20, verbose=True) #
     
     calculate_match_block(p11, p22, 220, 304, -4, iw=20, ih=20, verbose=True) #
     calculate_match_block(p11, p22, 220, 264, -4, iw=40, ih=20, verbose=True) #
@@ -317,6 +328,7 @@ def image_read(show=False, block=False):
     calculate_match_block(p11, p22, 120, 264+10, -4, iw=10, ih=10, verbose=True)
     calculate_match_block(p11, p22, 120+10, 264, -4, iw=10, ih=10, verbose=True)
     calculate_match_block(p11, p22, 120+10, 264+10, -4, iw=10, ih=10, verbose=True) #occlusion example
+    calculate_match_block(p11, p22, 140, 264, -4, iw=10, ih=10, verbose=True) #
 
     calculate_match_block(p11, p22, 290, 364, -4, iw=10, ih=10, verbose=True)
     #return
@@ -327,7 +339,10 @@ def image_read(show=False, block=False):
         ld = imd.load()
         match_start = time.time()
         iw,ih = 40,20
-        dx1,dy1=100,264
+        #dx1,dy1=100,264
+        #dx1,dy1=140,4
+        dx1,dy1=140,264
+        #dx1,dy1=260,344
         for y1 in range(4, 380, 20):
           for x1 in range(100, 600, 40): #40X20
             x2, val = calculate_match_block(p11, p22, x1, y1, -4)
@@ -335,7 +350,7 @@ def image_read(show=False, block=False):
             if x1==dx1 and y1==dy1:
                 print 'debug1 {0} {1}: '.format(dx1,dy1),  x2, val, d
             if val==0: continue
-            if d > 1500 and val!=-1:
+            if val!=-1:
                 for i in range(iw):
                   for j in range(ih):
                     out[x1+i,y1+j] = d
@@ -346,9 +361,9 @@ def image_read(show=False, block=False):
                 d = calculate_distance(640.0, 400.0, x1+k, x2, 80.0, 400.0, -0.2)
                 #import pdb; pdb.set_trace()
                 if x1==dx1 and y1==dy1:
-                    print 'debug2 {0} {1}: '.format(dx1,dy1), x1+k, x2, val, d
+                    print 'debug2 {0} {1}: '.format(dx1+k,dy1), x1+k, x2, val, d
                 if val==0: continue
-                if d> 900 and val!=-1:
+                if val!=-1:
                   for i in range(20):
                     for j in range(ih):
                       out[x1+k+i,y1+j] = d
@@ -356,47 +371,53 @@ def image_read(show=False, block=False):
                     for l in range(0,20,10):
                         for m in range(0,20,10):
                             x2, val = calculate_match_block(p11, p22, x1+k+l, y1+m, -4, iw=10, ih=10)
+                            d = calculate_distance(640.0, 400.0, x1+k+l, x2, 80.0, 400.0, -0.2)
                             if x1==dx1 and y1==dy1:
-                                print 'debug3 {0} {1}: '.format(dx1,dy1), x1+k+l, x2, val, d
+                                print 'debug3 {0} {1}: '.format(dx1+k+l,dy1+m), x1+k+l, x2, val, d
                             if val ==-1 or val==0: #occlusion or white
                                 continue
-                            d = calculate_distance(640.0, 400.0, x1+k+l, x2, 80.0, 400.0, -0.2)
-                            if x1+k==120 and y1==264:
-                                print x1+k+l, y1+m, x1, val, d
                             for i in range(10):
                               for j in range(10):
                                 out[x1+k+l+i,y1+m+j] = d
-                  
+            
+        match_dur = time.time() - match_start
+        print "match time ", "{0:.2f}".format(match_dur)
+        
+        for y1 in range(4, 380, 10):
           left,right=0,0
           bs = []
-          for x1 in range(100, 600, 40): #scan the empty block
+          for x1 in range(100, 600, 10): #scan the empty block
               d = out[x1,y1]
+              if y1==264:
+                  print x1, y1, d
+                  pass #import pdb; pdb.set_trace()
               if out[x1,y1]!=0: #head or tail; or continous
                   if bs:
                       if len(bs)>1: #end of the empty gap
                           bs.append([x1,d])
                           #fix gap
+                          fill_hgap(out, y1, bs)
                           bs = []
+                          bs.append([x1,d])
                       elif len(bs) == 1: #head
                           if bs[-1][1] != 0:
                               bs[0] = [x1,d]
                           else:
                               bs.append([x1,d])
                               #fix gap
+                              fill_hgap(out, y1, bs)
                               bs=[]
+                              bs.append([x1,d])
                   else: bs.append([x1,d]) #head
               else: #gap
                   bs.append([x1,d])
-        if bs: 
+          if bs: 
             if bs[0][0] == 0: #whole line is empty
                 pass #TODO: look up and down neighbors
             else: # right part
                 #fix right gap
                 pass
-            
-        match_dur = time.time() - match_start
-        print "match time ", "{0:.2f}".format(match_dur)
-        
+
         for y1 in range(4, 380, 10):
           for x1 in range(100, 600, 10):
             d = out[x1,y1]
