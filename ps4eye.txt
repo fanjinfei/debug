@@ -20,6 +20,14 @@ sudo apt install libglew-dev
   mv ... to ~/
   unzip/install (no sound part needed)
 
+  for Odroid4, download linuxarmv7l version
+  and install:
+apt-get --assume-yes remove libgles2-mesa-dev
+apt-get --assume-yes install libgles2-mesa-dev
+apt-get --assume-yes install libgles1-mesa
+apt-get --assume-yes remove libgles1-mesa-dev
+apt-get --assume-yes install libgles1-mesa-dev
+
 2. clone PS4EYECam; git checkout cdd5f6d . (for cget)
   mkdir ../ps4
   cd ../ps4
