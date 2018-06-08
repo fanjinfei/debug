@@ -239,7 +239,7 @@ def fill_hgap(out, y1, bs, iw=10, ih=10):
                 out[x+i,y1+j] = dx
     
 #sharp then 50X50 sub-block coarse match starting from 20X20
-def image_read(fn_l, fn_r, show=False, block=False):  
+def image_read(fn_l, fn_r, show=False, block=False):
     print 'pixel test:', pixel(80000, width=4500, map=heatmap)
     im1 = Image.open(fn_l) #left
     im2 = Image.open(fn_r) #right

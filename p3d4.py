@@ -240,158 +240,65 @@ def fill_hgap(out, y1, bs, iw=10, ih=10):
                 out[x+i,y1+j] = dx
     
 #sharp then 50X50 sub-block coarse match starting from 20X20
-def image_read(fn_l, fn_r, show=False, block=False):  
-    print 'pixel test:', pixel(80000, width=4500, map=heatmap)
+def image_read(fn_l, fn_r, show=False):
     im1 = Image.open(fn_l) #left
     im2 = Image.open(fn_r) #right
     e_im1 = get_edges(fn_l, 1.4, 20, 40) #left
     e_im2 = get_edges(fn_r, 1.4, 20, 40) #left
     
-    if False:
-        im1 = ImageEnhance.Contrast(im1) #sharp filter/blur filter: no difference
-        im2 = ImageEnhance.Contrast(im2)
-        pix1, pix2 = im1.enhance(2).load(), im2.enhance(2).load()
-    else:
-        pix1, pix2 = im1.load(), im2.load()
+    pix1, pix2 = im1.load(), im2.load()
 
-    im3 = Image.new('F', (640,400))
-    im4 = Image.new('F', (640,400))
-    p11 = im3.load()
-    p22 = im4.load()
+    p11 = np.zeros((640,400))
+    p22 = np.zeros((640,400))
     
     for i in range(640):
         for j in range(400):
             p11[i,j] = rgb2gray(*pix1[i,j])
             p22[i,j] = rgb2gray(*pix2[i,j])
 
-    #p11 = normalize_im(p11, 640, 400)
-    #p22 = normalize_im(p22, 640, 400)
-
-    a1 = np.zeros([20, 20], dtype = np.intc)
-    a2 = np.zeros([20, 20], dtype = np.intc)
-    a3 = np.zeros([20, 20], dtype = np.intc)
-    x1,y1,y2 = 100,100, 96
-    for i in range(20):
-        for j in range(20):
-            a1[i,j] = p11[x1+i, y1+j]
-            a2[i,j] = p22[92+i, y2+j]
-            a3[i,j] = p22[86+i, y2+j]
-    #test_adiff(a1, a2, a3)
-    #return
     data ={}
     data['p11'] = p11
     data['p22'] = p22
     data['em1'] = e_im1
     data['em2'] = e_im2
-
-    x2, val = calculate_match_block(data, 260, 260, -4, verbose=True) #bed pole top, 1
-    x2, val = calculate_match_block(data, 300, 300, -4, verbose=True) #projector left top, 2
-    x2, val = calculate_match_block(data, 320, 300, -4, verbose=True) #projector right top, 3
-
-    #because the len is not diagonal to wall
-    x2, val = calculate_match_block(data, 300, 80, -4, verbose=True) #top ceiling edge, middle, too short, 4? 
-    x2, val = calculate_match_block(data, 300, 90, -4, verbose=True) #top ceiling edge, 5
-    x2, val = calculate_match_block(data, 100, 100, -4, verbose=True) #top ceiling edge, left, too far, 6
-    x2, val = calculate_match_block(data, 480, 100, -4, verbose=True) #lef upper vent, 7: correct
-
-    #Special case 1: #white space, either ZERO shift or below actural value
-    x2, val = calculate_match_block(data, 400, 200, -4, verbose=True) #wall on right side of door knob
-    # x2==x1: derive from adjacent block
     
-    #Special case 2: similar to special case 1, x2 ~= x1
-    # because gray is 140 vs 157 in case No. 6, 5, 4
+    out = np.zeros([640, 400], dtype = np.intc)
+    imd = Image.new('RGB', (640, 400))
+    ld = imd.load()
+    match_start = time.time()
 
-    #special case 3:
-    x2, val = calculate_match_block(data, 440, 80, -4, verbose=True) #top ceiling right, too close, why?
-    x2, val = calculate_match_block(data, 480, 80, -4, verbose=True) #top ceiling right, too close, why?
-    x2, val = calculate_match_block(data, 320, 80, -4, verbose=True) #top ceiling right, too close, why?
+    iw,ih = 40,20
+    for y1 in range(4, 380, 20):
+      for x1 in range(100, 600, 40): #40X20
+        x2, val = calculate_match_block(data, x1, y1, -4)
+        d = calculate_distance(640.0, 400.0, x1, x2, 80.0, 400.0, -0.2)
+        if val==0: continue
+        if val!=-1:
+            for i in range(iw):
+              for j in range(ih):
+                out[x1+i,y1+j] = d
+        else: #look close object
+          for k in range(0, 40, 20): #20X20
+            x2, val = calculate_match_block(data, x1+k, y1, -4, iw=20, ih=20)
+            #if val > xxxx: It is occlusion; or need to divide to small block
+            d = calculate_distance(640.0, 400.0, x1+k, x2, 80.0, 400.0, -0.2)
 
-    x2, val = calculate_match_block(data, 480, 300, -4, verbose=True) #near door knob
-    x2, val = calculate_match_block(data, 460, 300, -4, verbose=True) 
-    x2, val = calculate_match_block(data, 480, 320, -4, verbose=True) 
-    x2, val = calculate_match_block(data, 480, 280, -4, verbose=True) 
-    
-    
-     #color grey: left x1~x2, right x3~x4, x1-x2=( x1-x3, x2-x4)
-    x2, val = calculate_match_block(data, 480, 344, -4, verbose=True)
-    x2, val = calculate_match_block(data, 520, 84, -4, verbose=True)
-
-    #down right (door left bottom)
-    x2, val = calculate_match_block(data, 520, 364, -4, verbose=True)
-    
-    x2, val = calculate_match_block(data, 280, 324, -4, verbose=True)
-    
-    #top ceiling
-    print "----"
-    calculate_match_block(data, 140, 4, -4, iw=40, ih=20, verbose=True) #
-
-    calculate_match_block(data, 280, 344, -4, iw=20, ih=20, verbose=True) #
-    
-    calculate_match_block(data, 220, 304, -4, iw=20, ih=20, verbose=True) #
-    calculate_match_block(data, 220, 264, -4, iw=40, ih=20, verbose=True) #
-    calculate_match_block(data, 300, 264, -4, iw=40, ih=20, verbose=True) #
-
-    #left top montior
-    calculate_match_block(data, 120, 264, -4, iw=40, ih=20, verbose=True)
-    calculate_match_block(data, 120, 264, -4, iw=20, ih=20, verbose=True)
-    calculate_match_block(data, 120, 264, -4, iw=10, ih=10, verbose=True) #white sample
-    calculate_match_block(data, 120, 264+10, -4, iw=10, ih=10, verbose=True)
-    calculate_match_block(data, 120+10, 264, -4, iw=10, ih=10, verbose=True)
-    calculate_match_block(data, 120+10, 264+10, -4, iw=10, ih=10, verbose=True) #occlusion example
-    calculate_match_block(data, 140, 264, -4, iw=10, ih=10, verbose=True) #
-
-    calculate_match_block(data, 290, 364, -4, iw=10, ih=10, verbose=True)
-
-    print '----'
-    calculate_match_block(data, 320, 264, -4, iw=40, ih=20, verbose=True)
-    #return
-    
-    if block: #match all
-        out = np.zeros([640, 400], dtype = np.intc)
-        imd = Image.new('RGB', (640, 400))
-        ld = imd.load()
-        match_start = time.time()
-        iw,ih = 40,20
-        #dx1,dy1=100,264
-        #dx1,dy1=140,4
-        dx1,dy1=140,264
-        #dx1,dy1=260,344
-        for y1 in range(4, 380, 20):
-          for x1 in range(100, 600, 40): #40X20
-            x2, val = calculate_match_block(data, x1, y1, -4)
-            d = calculate_distance(640.0, 400.0, x1, x2, 80.0, 400.0, -0.2)
-            if x1==dx1 and y1==dy1:
-                print 'debug1 {0} {1}: '.format(dx1,dy1),  x2, val, d
             if val==0: continue
             if val!=-1:
-                for i in range(iw):
-                  for j in range(ih):
-                    out[x1+i,y1+j] = d
-            else: #look close object
-              for k in range(0, 40, 20): #20X20
-                x2, val = calculate_match_block(data, x1+k, y1, -4, iw=20, ih=20)
-                #if val > xxxx: It is occlusion; or need to divide to small block
-                d = calculate_distance(640.0, 400.0, x1+k, x2, 80.0, 400.0, -0.2)
-                #import pdb; pdb.set_trace()
-                if x1==dx1 and y1==dy1:
-                    print 'debug2 {0} {1}: '.format(dx1+k,dy1), x1+k, x2, val, d
-                if val==0: continue
-                if val!=-1:
-                  for i in range(20):
-                    for j in range(ih):
-                      out[x1+k+i,y1+j] = d
-                else: #use 10X10 block
-                    for l in range(0,20,10):
-                        for m in range(0,20,10):
-                            x2, val = calculate_match_block(data, x1+k+l, y1+m, -4, iw=10, ih=10)
-                            d = calculate_distance(640.0, 400.0, x1+k+l, x2, 80.0, 400.0, -0.2)
-                            if x1==dx1 and y1==dy1:
-                                print 'debug3 {0} {1}: '.format(dx1+k+l,dy1+m), x1+k+l, x2, val, d
-                            if val ==-1 or val==0: #occlusion or white
-                                continue
-                            for i in range(10):
-                              for j in range(10):
-                                out[x1+k+l+i,y1+m+j] = d
+              for i in range(20):
+                for j in range(ih):
+                  out[x1+k+i,y1+j] = d
+            else: #use 10X10 block
+                for l in range(0,20,10):
+                    for m in range(0,20,10):
+                        x2, val = calculate_match_block(data, x1+k+l, y1+m, -4, iw=10, ih=10)
+                        d = calculate_distance(640.0, 400.0, x1+k+l, x2, 80.0, 400.0, -0.2)
+
+                        if val ==-1 or val==0: #occlusion or white
+                            continue
+                        for i in range(10):
+                          for j in range(10):
+                            out[x1+k+l+i,y1+m+j] = d
             
         match_dur = time.time() - match_start
         print "match time ", "{0:.2f}".format(match_dur)
@@ -401,9 +308,6 @@ def image_read(fn_l, fn_r, show=False, block=False):
           bs = []
           for x1 in range(100, 600, 10): #scan the empty block
               d = out[x1,y1]
-              if y1==264:
-                  print x1, y1, d
-                  pass #import pdb; pdb.set_trace()
               if out[x1,y1]!=0: #head or tail; or continous
                   if bs:
                       if len(bs)>1: #end of the empty gap
@@ -440,10 +344,43 @@ def image_read(fn_l, fn_r, show=False, block=False):
             for i in range(10):
               for j in range(10):
                 ld[x1+i, y1+j] = (r, g, b)
-        fig = pylab.figure()
-        pylab.imshow(imd)
-        pylab.show()
-        return
+        if show:
+            fig = pylab.figure()
+            pylab.imshow(imd)
+            pylab.show()
+        return out, p11
+
+#time sequence: 1, 2
+# case 1: viewer position static, with/without moving object (1.1, 1.2)
+# case 2: viewer moving, with/without moving object (2.1 2.2)
+def seq_match(seq1, seq2): #15 FPS
+    f1 = '/tmp/{0}_l.jpg'.format(seq1)
+    f2 = '/tmp/{0}_r.jpg'.format(seq1)
+    f3 = '/tmp/{0}_l.jpg'.format(seq2)
+    f4 = '/tmp/{0}_r.jpg'.format(seq2)
+
+    #get matched block, with estimated empty(white/occlusion, ignore it for now)
+    bl1, pix1 = image_read(f2, f1)
+    bl2, pix2 = image_read(f4, f3)
+
+    data = {}
+    data['bl1'] = bl1
+    data['bl2'] = bl2
+    data['px1'] = pix1
+    data['px2'] = pix2
+    #10X10 blocks (maybe more small?)
+    
+    if True:
+        blreg.imreg(data, 320, 334)
+        return 
+    res= []
+    for y1 in range(4, 380, 10):
+      for x1 in range(100, 600, 10):
+        x2,y2, val, d = blreg.imreg(data, x1, y1)
+        res.append([x2,y2,val, d])
+    res.sort(key = lambda k: -k[2])
+    
+    print res[:5]
 
 def flip_img(src, fn):
     imd = Image.new('RGB', (640, 400))
@@ -494,7 +431,10 @@ def main():
             return show_image(sys.argv[2], sys.argv[3])
         if sys.argv[1][-4:]=='.mp4':
             return test_read(sys.argv[1])
-    return image_read(sys.argv[1], sys.argv[2], show=True, block=True)
+        if sys.argv[1] =='depth': #depth detection of 2 jpg
+            return image_read(sys.argv[2], sys.argv[3], show=True, block=True)
+
+    return seq_match(sys.argv[1], sys.argv[2])
 
     pix1, pix2 = image_read()
     cal_pos(pix1, pix2)
