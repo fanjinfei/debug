@@ -1,5 +1,6 @@
 # from http://flask.pocoo.org/ tutorial
-from flask import Flask, request
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 from flask import render_template, redirect, g, url_for, abort
 from flask import send_from_directory
 from flask.ext.babel import Babel
@@ -16,6 +17,7 @@ base_url = 'http://dev-b-es-fusion01.stc.ca:8080/json/?'
 app = Flask(__name__, template_folder=templates_dir)
 app.config['BABEL_TRANSLATION_DIRECTORIES'] = './i18n'
 babel = Babel(app)
+CORS(app)
 '''
 pybabel init -i fr.po -d ./i18n/ -l fr
 pybabel compile -d i18n/
@@ -155,6 +157,12 @@ def favicon():
 def test():
     r = json.loads(_get_search('price'))
     pprint.pprint(r)
+
+@app.route('/api/data')
+def api_data():
+    data = {}
+    return jsonify(data)
+
 
 if __name__ == "__main__":
     #app.run(host='0.0.0.0', port=8000)
