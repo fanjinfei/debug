@@ -5,10 +5,19 @@
 
 <body>
 
-<div ng-app="myApp" ng-controller="myCtrl">
+<div ng-app="myApp">
+
+<div ng-controller="myCtrl">
   <p>Name : <input type="text" ng-keypress="EnterKeyPressed($event)" ng-model="fname"></p>
   <h1>Hello {{fname}}</h1>
   <my-results ready="myCtl.ready"> </my-results>
+  <div id="res1"> </div>
+</div>
+
+<div ng-controller="myCtrlMenu">
+  <h1>Hello {{uname}}</h1>
+</div>
+
 </div>
 
 <script src="myApp.js"></script>
