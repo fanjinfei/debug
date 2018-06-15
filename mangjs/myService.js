@@ -1,5 +1,5 @@
 
-myService.$inject = ['$http'];
+//myService.$inject = ['$http'];
 function myService($http) {
     var _this = this;
     _this.getStatus = function getStatus() {
@@ -25,7 +25,7 @@ function myService($http) {
     }
 }
 
-angular.module('myApp').service('myService', myService);
+angular.module('myApp').service('myService', ['$http', myService]);
 
 function appendTransform(defaults, transform) {
   defaults = angular.isArray(defaults) ? defaults : [defaults];
