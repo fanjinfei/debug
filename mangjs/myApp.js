@@ -6,7 +6,8 @@ var app = angular.module('myApp', ['ngRoute']).config(function($sceDelegateProvi
    // Allow loading from our assets domain.  Notice the difference between * and **.
    'https://*.github.com/api/**']);
  });
-app.config(function($routeProvider) {
+ 
+app.config( function($routeProvider) {
     $routeProvider
     .when("/", {
         templateUrl : "main.html"
@@ -15,10 +16,11 @@ app.config(function($routeProvider) {
     });
     
 });
+
 app.config(['$locationProvider', function($locationProvider) {
         $locationProvider.hashPrefix('');
         // use the HTML5 History API
     }]);
  
-
+console.log('app started');
 
