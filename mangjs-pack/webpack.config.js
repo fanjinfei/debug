@@ -13,7 +13,7 @@ module.exports = {
         path: __dirname + '/js',
         filename: '[name].bundle.js'
     },
-    optimization: {
+/*    optimization: {
         runtimeChunk: true,
         splitChunks: {
             chunks: "initial",
@@ -22,7 +22,7 @@ module.exports = {
                 vendors: false,
             },
         },
-    },
+    },*/
   	module: {
     	rules: [
 /*			{

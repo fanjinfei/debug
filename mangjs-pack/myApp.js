@@ -1,39 +1,44 @@
-//var angular = require('angular');
-//var ngRoute = require('angular-route');
 
-import angular from 'angular';
-import 'angular-route';
+var angular = require('angular');
+var ngRoute = require('angular-route');
+
+//import angular from 'angular';
+//import 'angular-route';
 'use strict';
 
 console.log('app started');
 
 
-var app = angular.module('myApp', ['ngRoute']).config(function($sceDelegateProvider) {
+//var app = angular.module('myApp', [ngRoute]);
+
+var app = angular.module('myApp', ['ngRoute']).config(['$sceDelegateProvider', function($sceDelegateProvider) {
  $sceDelegateProvider.resourceUrlWhitelist([
    // Allow same origin resource loads.
    'self',
    // Allow loading from our assets domain.  Notice the difference between * and **.
    'https://*.github.com/api/**']);
- });
-app.config(function($routeProvider) {
+ }]);
+
+app.config(['$routeProvider', function($routeProvider) {
     $routeProvider
     .when("/", {
 //        templateUrl : "js/main.html"
         template: require("/home/jffan/src/debug/mangjs-pack/main.html")
 //        template: "<p>welcome</p>"
     }).when("/red", {
-        template : require("/home/jffan/src/debug/mangjs-pack/red.html"),
-        controller: "myCtrl"
+//        template : require("/home/jffan/src/debug/mangjs-pack/red.html"),
+        template: "<p>welcome</p>"
+//        controller: "myCtrl"
     });
     
-});
+}]);
+
 app.config(['$locationProvider', function($locationProvider) {
         $locationProvider.hashPrefix('');
         // use the HTML5 History API
     }]);
 
-
-
+/*
 function myCtrl($scope, myService) {
     var _this = this;
     $scope.firstName= "John";
@@ -139,11 +144,11 @@ app.controller('myCtrlMenu', ['$scope', '$location',myCtrlMenu]);
 app.directive('yepNope', YepNopeDirective);
 app.directive('myResults', myResults);
 app.service('myService', ['$http', myService]);
-/*
+*/
 require('./myDirective');
 require('./myService');
 require('./myCtrl');
-*/
-export default "myApp";
+
+//export default "myApp";
 
 
