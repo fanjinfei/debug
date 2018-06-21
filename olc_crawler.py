@@ -279,7 +279,7 @@ def read_json_url(url):
             if item.get('variable'): # not used
                 item.pop('variable')
             if not filter_olc(item):
-                continue
+                pass #continue
             res.append(item)
     return total, res
 
@@ -444,52 +444,56 @@ def test():
         t, r = read_json_url(url)
         for i in r:
             print json.dumps(i)
-    else:
-        src, dst = set(), set()
-        dedup = {}
-        dup = {}
-        r = read_jsonl(sys.argv[1]) #above download file
-        for i in r:
-            url = i['url']
-            if dedup.get(url, None):
-                #print i
-                #print dedup[url]
-                #print '\n'
-                dup[url] = True
-                dedup[url].append(i)
-            else:
-                dedup[url] = [i]
-            src.add(i['url'])
-        for i in r[:3]:
-            continue
-        #print json.dumps(i)
+        return
 
-        #http://f7searchprodz1.stcpaz.statcan.gc.ca:7773/solr/src01EN_shard1_replica1/select?q=ds%3Aolc&rows=12000&fl=id+attr_strurl&wt=json&indent=true
-        olc = read_jsonfile(sys.argv[2]) #from solr
-        olc = olc['response']['docs']
-        for i in olc:
-            dst.add(i['attr_strurl'])
+    #handle downloaded files
+    src, dst = set(), set()
+    dedup = {}
+    dup = {}
+    r = read_jsonl(sys.argv[1]) #above download file
+    for i in r:
+        if not filter_olc(item): #do some filtering here
+            pass #continue
+        url = i['url']
+        if dedup.get(url, None):
+            #print i
+            #print dedup[url]
+            #print '\n'
+            dup[url] = True
+            dedup[url].append(i)
+        else:
+            dedup[url] = [i]
+        src.add(i['url'])
+    for i in r[:3]:
+        continue
+    #print json.dumps(i)
 
-        print len(r), len(olc)
-        diffs = list( src.difference(dst))
-        diffs.sort()
-        for url in diffs:
-            print url
+    #http://f7searchprodz1.stcpaz.statcan.gc.ca:7773/solr/src01EN_shard1_replica1/select?q=ds%3Aolc&rows=12000&fl=id+attr_strurl&wt=json&indent=true
+    olc = read_jsonfile(sys.argv[2]) #from solr
+    olc = olc['response']['docs']
+    for i in olc:
+        dst.add(i['attr_strurl'])
 
-        print '###################'
-        diffs2 = list( dst.difference(src))
-        diffs2.sort()
-        for url in diffs2:
-            print url
+    print len(r), len(olc)
+    diffs = list( src.difference(dst))
+    diffs.sort()
+    for url in diffs:
+        print url
 
-        print len(diffs), len(diffs2)
-        print len(src), len(dst)
+    print '###################'
+    diffs2 = list( dst.difference(src))
+    diffs2.sort()
+    for url in diffs2:
+        print url
 
-        print '********************'
-        dl= dup.keys()
-        dl.sort()
-        for l in dl:
-            print l, len(dedup[l])
+    print len(diffs), len(diffs2)
+    print len(src), len(dst)
+
+    print '********************'
+    dl= dup.keys()
+    dl.sort()
+    for l in dl:
+        print l, len(dedup[l])
     sys.exit(0)
 
 if __name__ =='__main__':
