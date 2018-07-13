@@ -219,6 +219,8 @@ def main():
         fu_requester = HttpFusionRequester(fusion_url = url)
 
     #solr_url = sys.argv[4] #http://www:7773/solr/classEN_shard1_replica1/select?q=ds%3A105napcs2017&wt=json&indent=true
+    #query fusion: http://*.ca:8764/api/apollo/query-pipelines/src01EN-default/collections/src01EN/select?fl=*,score&echoParams=all&wt=json&json.nl=arrarr&sort&start=0&q=*:*&debug=true&rows=10
+    #fusion public query port 9292: view-source:http://.ca:9292/api/apollo/query-pipelines/src01EN-default/collections/src01EN/srs?fl=*,score&echoParams=all&wt=json&json.nl=arrarr&sort&start=0&q=consumer&debug=true&rows=10&hl=on
     #old_csv = sys.argv[4]
 
 
