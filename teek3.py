@@ -63,6 +63,7 @@ print('------------------------')
 
 for n in g.V(name__contains='python'):
     print (n.name)
+print list(g.V(name__isnull=True))
 print('------------------------')
 
 for e in g.E(action='saw'):

@@ -2,8 +2,8 @@
 
 from bs4 import BeautifulSoup as mparser
 from bs4.element import Comment
-from urlparse import urlparse
-from HTMLParser import HTMLParser
+from urllib.parse import urlparse
+from html.parser import HTMLParser
 from lxml import etree
 
 import sys
@@ -22,6 +22,13 @@ import traceback
 import time
 from datetime import datetime
 import dateparser
+
+def append_csv(filename, rows):
+    outf=open(filename, 'ab')
+    writer = unicodecsv.writer(outf, delimiter='\t')
+
+    for row in rows:
+        writer.writerow(row)
 
 def write_csv(filename, rows, header=None):
     outf=open(filename, 'wb')
