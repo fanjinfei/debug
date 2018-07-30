@@ -1,0 +1,26 @@
+<div ng-controller="myCtrl">
+  <p>Name : <input type="text" ng-keypress="EnterKeyPressed($event)" placeholder="{{'SEARCH_PLACEHOLDER' | translate}}" ng-model="q"></p>
+  <h1>Search for: {{q}}</h1>
+  <div id="search_results"> {{ 'SEARCH' | translate }} search results</div>
+  <div id="res1"> </div>
+  <div>
+        <paging>
+            <ul class="pagination"
+                on-select-page="selectPage(page)">
+                <li ng-class="{disabled: noPrevious()}">
+                    <a ng-click="selectPrevious()">&laquo;</a>
+                </li>
+                <li ng-repeat="page in pages"
+                    ng-class="{active: isActive(page)}">
+                    <a ng-click="selectPage(page)">{{page}}</a>
+                </li>
+                <li ng-class="{disabled: noNext()}">
+                    <a ng-click="selectNext()">&raquo;</a>
+                </li>
+            </ul>
+        </paging>
+  </div>
+  
+</div>
+
+

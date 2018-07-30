@@ -12,10 +12,11 @@ console.log('app started');
 
 //var app = angular.module('myApp', [ngRoute]);
 
-var app = angular.module('myApp', ['ngRoute']).config(['$sceDelegateProvider', function($sceDelegateProvider) {
+var app = angular.module('myApp', ['ngRoute','pascalprecht.translate']).config(['$sceDelegateProvider', function($sceDelegateProvider) {
  $sceDelegateProvider.resourceUrlWhitelist([
    // Allow same origin resource loads.
    'self',
+   'http://localhost:8001/**',
    // Allow loading from our assets domain.  Notice the difference between * and **.
    'https://*.github.com/api/**']);
  }]);
@@ -24,7 +25,7 @@ app.config(['$routeProvider', function($routeProvider) {
     $routeProvider
     .when("/", {
 //        templateUrl : "js/main.html"
-        template: require("/home/jffan/src/debug/mangjs-pack/main.html")
+        template: require("./main.html")
 //        template: "<p>welcome</p>"
     }).when("/red", {
 //        template : require("/home/jffan/src/debug/mangjs-pack/red.html"),
@@ -39,6 +40,28 @@ app.config(['$locationProvider', function($locationProvider) {
         // use the HTML5 History API
     }]);
 
+app.config(['$translateProvider', function($translateProvider) {
+  $translateProvider.translations('en', {
+    SEARCH: 'Search',
+    SEARCH_PLACEHOLDER: 'Please input search term',
+    TITLE: 'Login Form',
+    USERNAME: 'Username',
+    PASSWORD: 'Password',
+    LOGIN: 'Login'
+  });
+ 
+  $translateProvider.translations('fr', {
+    SEARCH: 'Recherche',
+    SEARCH_PLACEHOLDER: 'Recherche S.V.P term',
+    TITLE: 'Formulaire de login',
+    USERNAME: 'Identifiant',
+    PASSWORD: 'Mot de passe',
+    LOGIN: 'Connexion'
+  });
+  $translateProvider.useSanitizeValueStrategy(null);
+//  $translateProvider.determinePreferredLanguage();
+}]);
+ 
 /*
 function myCtrl($scope, myService) {
     var _this = this;
