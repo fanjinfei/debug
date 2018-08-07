@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup as mparser
 from bs4.element import Comment
 from urlparse import urlparse
 from HTMLParser import HTMLParser
+from PyPDF2 import PdfFileReader
 import sys
 import re
 import requests
@@ -18,6 +19,31 @@ from datetime import datetime
 
 from crawler_base import write_csv, read_csv, read_jsonfile
 
+def download_file(url):
+    local_filename = '/tmp/tmpparser.pdf'
+    # NOTE the stream=True parameter
+    r = requests.get(url, stream=True)
+    with open(local_filename, 'wb') as f:
+        for chunk in r.iter_content(chunk_size=1024): 
+            if chunk: # filter out keep-alive new chunks
+                f.write(chunk)
+                #f.flush() commented by recommendation from J.F.Sebastian
+    return local_filename
+
+def getPdfContent(url):
+    try:
+        filename = download_file(url)
+        with open(filename, 'rb') as f:
+            reader = PdfFileReader(f)
+            number_of_pages = reader.getNumPages()
+            contents = []
+            for page in range(0,number_of_pages):
+                cs = reader.getPage(page).extractText().split('\n')
+                for c in cs:
+                    contents.append(c.strip())
+            return ' '.join(contents)
+    except:
+        return ''
 
 def clean_rec2(b,lan):
     b = re.sub(r"\\\t", " ", b)
@@ -75,7 +101,7 @@ def clean_rec(b):
 
 
 
-def putpdflink(b, lan): #set pdfurl
+def putPdfLink(b, lan): #set pdfurl
 #   value['attr_strpdflink'] =  b
     if not b: return ''
     linkval = b
@@ -86,22 +112,20 @@ def putpdflink(b, lan): #set pdfurl
     return disppdfurl.format('eng' if 'en' in lan else 'fra') 
 
 
-def puturlpdflink(value, b, lan): #set pdf to url
-    if not b: return 1
+def putUrlPdfLink( b, lan): #set pdf to url
     linkval = b
-
-    value['url'] =  b
     if 'n1' in linkval or 'alternative' in linkval: 
-         value['attr_strurl'] =  b
-         return 1
-    else : 
-        disppdfurl = "http://www.statcan.gc.ca/access_acces/alternative_alternatif.action?lang={0}&loc=" + linkval 
-        value['attr_strurl'] =  disppdfurl.format('eng' if 'en' in lan else 'fra')
-        #fixed by me:
-        value['url'] =  value['attr_strurl']
-        return 0
+         return b
+    disppdfurl = "http://www.statcan.gc.ca/access_acces/alternative_alternatif.action?lang={0}&loc=" + linkval 
+    return disppdfurl.format('eng' if 'en' in lan else 'fra')
 
-def filter_olc(value, lan='en'): 
+# map {ori_url, optional(pdf_link, html_link), calculated_olc_link} ==> url, pdf_link, olc_link
+#
+def filter_olc(value, lan='en'):
+
+    if value.get('releasedate')[:10] not in [ '2018-08-03', '2018-08-02'] :
+        return False
+
     if value.get('discontinued'): return False
 
     if value.get('producttypecode') == '10':
@@ -110,17 +134,15 @@ def filter_olc(value, lan='en'):
     if '/imdb/' in value.get('url'):
        return False
 
-    if not value.get('title'):
-       return False
+    title = value.get('title')
+    if not title:
+        return False
 
     # filtering out the daily records; 
     display_pid = value.get('display_pid', '')
     if re.search("11-001-X[0-9]", display_pid):
         return False
 
-    title = value.get('title')
-    if not title:
-        return False
 
     if not value.get('archived'):
        value['stclac'] =  "1;2"
@@ -133,15 +155,34 @@ def filter_olc(value, lan='en'):
     elif value.get('archived'):
        value['stclac'] =  "1;3"
 
-    orighiopid = ""
-    if value.get('hierarchy'):
-       orighiopid = value.get('hierarchy')
+    orig_url_str = value.get('url', '').lstrip()
+    if len(orig_url_str) >= 8:
+        value['attr_strurl'] = orig_url_str
+
+    if value.get('description'):
+        desc = value.get('description', '')
+        desc = re.sub(r'&nbsp;', r' ', desc)
+        desc = re.sub(r'\s+', r' ', desc)
+        desc = re.sub(r'<.{1,9}>', r'', desc)
+        desc = desc.strip()
+
+        if len(desc) > 200:
+            desc = desc + ' '
+            desc = re.sub(r"(^.{200}[^\s,.\n?]*)(.*$)", r"\1 ...", desc)
+
+        value['attr_flddesc'] = desc
+        value['attr_txtdesc'] = desc
+
+    # 26 with issues, filter out, 2018-01-16 discuss with Kay and Michele in Kay's office
     if value.get('producttypecode'):
-       if '26' in value.get('producttypecode').keys() :
-          if value.get('documenttype') == 'issue':
-              if not value.get('productid') == orighiopid : 
-              #if not value.get('productid') in orighiopid : 
-                 return False
+        pkeys = value.get('producttypecode').keys()
+        if '26' in value.get('producttypecode').keys():
+            if value.get('documenttype') == 'issue':
+                # make an exception for the issue of SDDS
+                if value.get('productid') == '13-608-X2017001':
+                    pass
+                else:
+                    return False
 
 
     isTable = ""
@@ -158,37 +199,139 @@ def filter_olc(value, lan='en'):
        if '10' in value['producttypecodekey_ss']:
            return False
 
+    if value.get('conttype'):
+     if not value.get('conttype').keys():
+       cont2val =  value.get('conttype')
+     else :
+       cont2val =  value.get('conttype').values()
+       cont2key =  value.get('conttype').keys()
+       value['conttypeval_ss'] =  cont2val 
+       value['attr_fldconttypeval'] =  cont2val 
+       value['conttypekey_ss'] =  cont2key 
+       ## Kay in the meeting, contenttype should be searchable, and null records delete, except conf service;    
+    else :
+       if not 'confer' in value.get('documenttype') and not 'service' in value.get('documenttype'):
+          return False
+
+    orig_title = value.get('title')
+    pdf_title = orig_title + " (PDF)"
+    if value.get('productid'):
+        orig_title = value.get('title') + " (" + value.get('productid') + ")"
+        if isTable == "1":
+            cansimval = value.get('display_pid', value.get('productid'))
+            if cansimval:
+                orig_title = value.get('title') + " (" + cansimval + ")"
+        value['attr_fldtitle'] = orig_title
+        value['attr_txttitle'] = orig_title
+        strtitle = orig_title.strip()
+        strtitle = re.sub(r'(")', r'', strtitle)
+        strtitle = re.sub(r'(&laquo;)', r'', strtitle)
+        strtitle = strtitle.lstrip()
+        value['attr_strtitle'] = strtitle
+
+    origdate = value.get('releasedate')
+    if origdate:
+        value['date'] = origdate
+        stripdate = re.sub(r'(.{10,12})(T.*)', r'\1', origdate)
+        value['attr_strdate'] = stripdate
+        value['release_date_s'] = stripdate
+
+    if value.get('productid'):
+        value['productid_s'] = value.get('productid')
+
+    if value.get('frc'):
+        value['attr_fldfrc'] = value.get('frc')
+
+    if value.get('producttypecode'):
+        value['producttypecode_s'] = value.get('producttypecode')
+    if value.get('documenttype'):
+        value['documenttype_s'] = value.get('documenttype')
+    if isTable == "1":
+        value['ds'] = "tableview"
+        # inject the words for searches to match
+        value['attr_txtmeta'] =  "table tables tableau tableaux"
+    if value.get('producttypecode'):
+        if '27' in value.get('producttypecode').keys():
+            value['ds'] = "summaryview"
+
+    if value.get('subject'):
+        value['attr_fldsubject'] = [x for x in value.get('subject').values()]
+
+    if value.get('subject_codes_desc'):
+        value['attr_fldsubjectcodesdesc'] = [x for x in value.get('subject_codes_desc').values()]
+
+    if value.get('subject_levels'):
+        value['attr_fldsubjectlevels'] = [x for x in value.get('subject_levels').values()]
+        value['subjectlevels_ss'] = [x for x in value.get('subject_levels').values()]
+
+    if value.get('keywords_terms'):
+        value['keywords'] = [x for x in value.get('keywords_terms')]
+
+    if 'variable' in value:
+        value['attr_txtvariable'] = value.get('variable')
+        del value['variable']
+    if value.get('cansim'):
+        value['cansim_s'] = value.get('cansim')
+        # inject the word cansim
+        value['attr_fldcansim'] =  "cansim; " + value.get('cansim')
+        tmpcansim = value.get('cansim')
+        value['attr_fldaltercansim'] = tmpcansim
+        if re.search('-', tmpcansim):
+            tmpcansim = re.sub(r'-', r'', tmpcansim)
+            value['attr_fldaltercansim'] = tmpcansim
+        value['attr_strcansim'] = value.get('cansim')
+        value['cansim'] = ""
+    if value.get('geoname'):
+        geo_names = [x for x in value.get('geoname').values()]
+        if geo_names[0]:
+            value['geoname_s'] = geo_names[0]
+            value['attr_fldgeoname'] = geo_names[0]
+
+    # fields added for the client admin verification purposes, jira 1000
+    if value.get('geoname'):
+        value['attr_fldgeonameval'] = [x for x in value.get('geoname').values()]
+        value['attr_fldgeonamekey'] = [x for x in value.get('geoname').keys()]
+
+    if value.get('subject'):
+        value['attr_fldsubjectval'] = [x for x in value.get('subject').values()]
+        value['attr_fldsubjectkey'] = [x for x in value.get('subject').keys()]
+
+    if value.get('archived'):
+        value['archivedval_ss'] = [x for x in value.get('archived').values()]
+        value['archivedkey_ss'] = [x for x in value.get('archived').keys()]
+
+    if value.get('discontinued_formats'):
+        value['discontinued_formatsval_ss'] = [x for x in value.get('discontinued_formats').values()]
+        value['discontinued_formatskey_ss'] = [x for x in value.get('discontinued_formats').keys()]
+
     domain = "https://www150.statcan.gc.ca/n1/" + lan + "/catalogue/"
     #pdfdomain = "https://stc-ndm-prod-pc.statcan.gc.ca/n1/" + lan 
     pdfdomain = "https://www150.statcan.gc.ca/n1/" + lan 
 
-    #domain = "https://stc-ndm-qa-pc.statcan.gc.ca/n1/en/catalogue/"
-    olclink = ""
-    pid = ""
+    olc_link = ""
     if value.get('productid'):
-       value['attr_strolclink'] =  domain + value.get('productid')
-       # if tablevstr in value.get('url') or 'Tables' in value.get('conttype'):
-       # if 'Tables' in value.get('conttype'):
-       if isTable == "1" :
-          value['ds'] =  "tableview"
-          value['attr_strolclink'] =  ""
-          olclink = ""
-       else:
-          value['ds'] =  "olc"
-          olclink = domain + value.get('productid')
-       pid = value.get('productid')
+        if isTable == "1":
+            value['ds'] = "tableview"
+            value['attr_strolclink'] = ""
+            olc_link = ""
+        else:
+            value['attr_strolclink'] = domain + value.get('productid')
+            value['ds'] = "olc"
+            olc_link = domain + value.get('productid')
+        pid = value.get('productid')
     else:
-       value['ds'] =  "nolc"
-       value['attr_strolclink'] =  ""
-       return False
+        pid = ""
+        value['ds'] = "nolc"
+        value['attr_strolclink'] = ""
+        return False
 
-    pdflink = ""
     origurl = value.get('url').strip()
     value['ori_url'] = origurl
     if value.get('other_urls'):
-        #urls =  value.get('other_urls')
-        #if 'stageb' in machine:
-        urls =  value.get('other_urls').values()
+        pdf_link = value.get('other_urls', {}).get('8', '')
+        html_link = value.get('other_urls', {}).get('17', '')
+        '''
+                urls =  value.get('other_urls').values()
 
         pdflink =  ""
         htmlink =  ""
@@ -209,60 +352,105 @@ def filter_olc(value, lan='en'):
                pdflink = urls[2]
             else:
                htmlink = urls[2]
+'''
+        if html_link:
+            if html_link in orig_url_str or html_link in olc_link:
+                html_link = ""
 
+        if pdf_link:
+            value['attr_strpdflink'] = putPdfLink(pdf_link, lan)
 
-        if htmlink and htmlink in origurl :
-           htmlink = ""
+        if "/catalo" in orig_url_str:
+            if pdf_link and html_link:
+                value['url'] = html_link
+                value['attr_strurl'] = html_link
+                value['attr_txturl'] = html_link
+                value['attr_strpdflink'] = putPdfLink(pdf_link, lan)
 
-        if htmlink and htmlink in olclink :
-           htmlink = ""
+            elif html_link and not pdf_link:
+                value['url'] = html_link
+                value['attr_strurl'] = html_link
+                value['attr_txturl'] = html_link
 
-        if pdflink :
-           value['attr_strpdflink'] = putpdflink(pdflink, lan)
-           #value['attr_strpdflink'] =  pdflink
-           if pdflink :
-	       tmppdflink = pdflink
+            elif pdf_link and not html_link:
+                value['url'] = pdf_link
+                value['attr_strurl'] = putUrlPdfLink(pdf_link, lan)
+                value['attr_txturl'] = pdf_link
 
-
-        if "/catalo" in origurl :
-		if pdflink and htmlink :
-                   value['url'] =  htmlink
-	           value['attr_strurl'] =  htmlink
-	           value['attr_txturl'] =  htmlink
-
-                   value['attr_strpdflink'] =  putpdflink(pdflink, lan)
-                   #value['attr_strpdflink'] =  pdflink
-		elif htmlink and not pdflink :
-                   value['url'] =  htmlink
-	           value['attr_strurl'] =  htmlink
-	           value['attr_txturl'] =  htmlink
-
-		elif pdflink and not htmlink :
-                   donothing = puturlpdflink(value, pdflink, lan)
-                   #value['url'] =  pdflink
-	           #value['attr_strurl'] =  pdflink
-	           value['attr_txturl'] =  pdflink
-
-                   value['attr_strpdflink'] =  ""
+                value['attr_strpdf_link'] = ""
+                value['attr_fldtitle'] = pdf_title
+                value['attr_txttitle'] = pdf_title
         else:
-		if pdflink and htmlink :
-                   value['url'] =  htmlink
-                   value['attr_strpdflink'] = putpdflink(pdflink, lan)
-		elif pdflink :
-                   value['attr_strpdflink'] = putpdflink(pdflink, lan)
+            if pdf_link and html_link:
+                value['url'] = html_link
+                value['attr_strpdflink'] = putPdfLink(pdf_link, lan)
+            elif pdf_link:
+                value['attr_strpdflink'] = putPdfLink(pdf_link, lan)
 
 
-    if "/catalo" in value.get('url') and "/catalo" in olclink:
+    if "/catalo" in value.get('url') and "/catalo" in olc_link:
        value['attr_strolclink'] =  ""
 
-    if value.get('url') in olclink:
+    if value.get('url') in olc_link:
        value['attr_strolclink'] =  ""
 
     if '.pdf' in value.get('url'):
-       value['attr_strpdflink'] =  ""
-       value['attr_strpdflink'] =  ""
+        value['attr_strpdf_link'] = ""
+        value['attr_fldtitle'] = pdf_title
+        value['attr_txttitle'] = pdf_title
+
+    if value.get('id'):
+        value['ndmid_s'] = value.get('id')
+        # value['id'] = value.get('url')
+        value['id'] = 'olc' + value.get('productid')
        
     return True
+
+def olcData(val):
+    data = {
+        'url': val['attr_strurl'],
+        'title': val['attr_fldtitle'],
+        'desc': val['attr_flddesc'],
+        'pdfurl': val.get('attr_strpdflink', ''),
+        'olcurl': val.get('attr_strolclink', ''),
+        'pdf_content':'',
+        }
+    if '.pdf' in data['url']:
+        slink = data['url']
+    elif '.pdf' in data['pdfurl']:
+        slink = data['pdfurl']
+    else:
+        slink = ''
+    if slink:
+        data['pdf_content'] = getPdfContent(slink)
+    return data
+    
+solr_pdf_url = {
+    'en': 'http://f7searchprodz1.stcpaz.statcan.gc.ca:10219/solr/ndmpdfEN/',
+    'fr':  'http://f7searchprodz1.stcpaz.statcan.gc.ca:10219/solr/ndmpdfFR/',
+    }
+def get_solr_pdf_links(lang):
+    pdf_ids = []
+    _solr_response = requests.get(
+        solr_pdf_url[lang] + 'select?q=*&rows=3000000&fl=id,url&wt=json', proxies=proxies)
+    for solr_doc in _solr_response.json()['response']['docs']:
+        if solr_doc.get('id'):
+            if 'ndmpdf' in solr_doc.get('id'):
+                b = solr_doc.get('id')
+                b = re.sub(r"^.*ndmpdf[^/]*/", "", b)
+                pdf_ids.append(b.strip())
+    return set(pdf_ids)
+
+def get_pdf_content(lang):
+    _pdf_content = {}
+    _solr_response = requests.get(
+        solr_pdf_url[lang] + 'select?q=*:*&rows=3000000&fl=id,content&wt=json',
+        proxies=proxies)
+    for solr_doc in _solr_response.json()['response']['docs']:
+        if solr_doc.get('id'):
+            url = re.sub(r'^.*ndmpdf[^/]*/', '', solr_doc.get('id'))
+            _pdf_content[url] = solr_doc.get('content')
+    return _pdf_content
 
 def read_json_url(url):
 #    url = 'https://www150.statcan.gc.ca/n1/en/metadata.json?count={count}&type=products&offset={offset}'
@@ -278,8 +466,8 @@ def read_json_url(url):
         for item in r:
             if item.get('variable'): # not used
                 item.pop('variable')
-            if not filter_olc(item):
-                pass #continue
+            #if not filter_olc(item):
+            #    pass #continue
             res.append(item)
     return total, res
 
@@ -440,21 +628,26 @@ def main():
 
 def test():
     if sys.argv[1]=='download':
-        url = 'https://www150.statcan.gc.ca/n1/en/metadata.json?count={count}&type=products&offset={offset}'
+#        url = 'https://www150.statcan.gc.ca/n1/en/metadata.json?producttypecode=11,20,25,26,27,28&count={count}&type=products&offset={offset}&releasedate={release_date}'
+        url = 'https://www150.statcan.gc.ca/n1/en/metadata.json?producttypecode=11,20,25,26,27,28&count={count}&type=products&offset={offset}&releasedate=2018-08-02'
+#full_url = "https://www150.statcan.gc.ca/n1/{lan}/metadata.json?producttypecode=11,20,25,26,27,28&count={count}&offset={offset}&releasedate={release_date}"    new release only
         t, r = read_json_url(url)
         for i in r:
             print json.dumps(i)
         return
 
     #handle downloaded files
-    src, dst = set(), set()
+    src, dst = [], set()
     dedup = {}
     dup = {}
     r = read_jsonl(sys.argv[1]) #above download file
     for i in r:
-        if not filter_olc(item): #do some filtering here
-            pass #continue
-        url = i['url']
+        if not filter_olc(i): #do some filtering here
+            continue
+        url = i.get('attr_strurl', None) #the main key
+        if not url:
+            print json.dumps(i, indent=4)
+            sys.exit(0)
         if dedup.get(url, None):
             #print i
             #print dedup[url]
@@ -463,12 +656,27 @@ def test():
             dedup[url].append(i)
         else:
             dedup[url] = [i]
-        src.add(i['url'])
-    for i in r[:3]:
-        continue
-    #print json.dumps(i)
+            src.append(i)
+    for i in src:
+        d = olcData(i)
+        print 'url', d['url']
+        print 'tile', d['title']
+        print 'desc', d['desc']
+        
+        # additional fields more than web page
+        #attr_body : get from pdf parsing
+        print 'pdf', d['pdfurl']
+        print 'olc', d['olcurl']
+        print 'content', d['pdf_content']
+        print '*******************************'
+    sys.exit(0)
 
+    #ds:olc && release_date_dt:[2018-08-03T00:00:00Z TO 2018-08-04T00:00:00Z]
+    #fl=release_date_dt, url, attr_strurl, ds, attr_str*, attr_body, attr_flddesc, attr_fldtitle
+    #sort - release_date_dt desc
     #http://f7searchprodz1.stcpaz.statcan.gc.ca:7773/solr/src01EN_shard1_replica1/select?q=ds%3Aolc&rows=12000&fl=id+attr_strurl&wt=json&indent=true
+    
+    #OR http://f7searchprodz1.stcpaz.statcan.gc.ca:7773/solr/src01EN_shard1_replica1/select?q=ds%3Aolc+%26%26+release_date_dt%3A%5B2018-08-02T00%3A00%3A00Z+TO+2018-08-03T00%3A00%3A00Z%5D&sort=release_date_dt+desc&rows=50&fl=release_date_dt%2C+url%2C+attr_strurl%2C+ds%2C+attr_str*%2C+attr_body%2C+attr_flddesc%2C+attr_fldtitle&wt=json&indent=true&facet=true&facet.field=ds
     olc = read_jsonfile(sys.argv[2]) #from solr
     olc = olc['response']['docs']
     for i in olc:
@@ -478,13 +686,13 @@ def test():
     diffs = list( src.difference(dst))
     diffs.sort()
     for url in diffs:
-        print url
+        pass #print url.encode('utf-8')
 
     print '###################'
     diffs2 = list( dst.difference(src))
     diffs2.sort()
     for url in diffs2:
-        print url
+        print url.encode('utf-8')
 
     print len(diffs), len(diffs2)
     print len(src), len(dst)
