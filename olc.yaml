@@ -1,13 +1,14 @@
 #NDM olc (Online Catelogue)
-- ndm_olc_archive_en:
-    name: ndm olc archive english
+- ndm_olc_en:
+    name: ndm olc english
     lang: en
-    archive_file: /tmp/ndm_olc_archive_en-crawled.csv
-    output_file: /tmp/ndm_olc_archive_en.csv
+    archive_file: /tmp/ndm_olc_en-crawled.csv
+    output_file: /tmp/ndm_olc_en.csv
     depth: 0
     crawler: olc
     start_links:
-      - "https://www150.statcan.gc.ca/n1/en/metadata.json?count={count}&type=products&offset={offset}"
+#      - "https://www150.statcan.gc.ca/n1/en/metadata.json?count={count}&type=products&offset={offset}"
+      - "https://www150.statcan.gc.ca/n1/en/metadata.json?producttypecode=11,20,25,26,27,28&count={count}&type=products&offset={offset}&releasedate=2018-08-02"
     include_patterns:
       - .*
     exclude_html_sections:

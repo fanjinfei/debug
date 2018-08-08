@@ -414,6 +414,7 @@ def olcData(val):
         'pdfurl': val.get('attr_strpdflink', ''),
         'olcurl': val.get('attr_strolclink', ''),
         'pdf_content':'',
+        'last_modified': val.get('releasedate', ''),
         }
     if '.pdf' in data['url']:
         slink = data['url']
@@ -482,6 +483,8 @@ def read_jsonl(url):
             res.append(r)
     return res
 
+link_filters = {
+}
 
 class OLC_Crawler():
     def __init__(self, data):
@@ -511,48 +514,19 @@ class OLC_Crawler():
             self.skip_index_patterns.append(re.compile(p, re.I))
         self.do_index = re.compile('Cadotte', re.I)
 
-        self.sessions = {}
-
-    def get_session(self, url):
-        host = urlparse(url).hostname
-        if not self.sessions.get(host, None):
-            self.sessions[host] = requests.Session()
-        return self.sessions[host]
-
-    def link_filter(self, url):
-        for p, m in self.ems.items():
-            if m.match(url):
-                #print 'exlcude 1:', p, url
-                return False
-        for p,m in self.ims.items():
-            if m.search(url): return True
-        #print 'exlcude 2:', url
-        return False
-        
-    def index_filter(self, doc):
-        # TODO: follow_link_not_index from yaml
-        url = doc.url
-        if self.do_index.search(url): return True
-
-        for m in self.skip_index_patterns:
-            if m.search(url): return False
-        return True
-
     def get_start_links(self, urls, urls_modified):
-        total, res = read_json(self.start_links[0])
+        total, res = read_json_url(self.start_links[0])
         for item in res:
-            url = item['url'] #three link, but we will only use one
-            other_urls = item.get('other_urls', {})
-            pdf_url = other_urls.get('8')
-            olc_url = other_url.get('17') # the same as url ??? (CAT link)
-            if cat_url and item.get('productid', ''): # display_pid
-                cat_url = 'https://www150.statcan.gc.ca/n1/en/catalogue' + item.get('productid', '')
-            short_description = item['description']
-            doc_type = item['documenttype']
-            archived = item['archived'] #{"2":"current"} is a dict
-            title = item['title']
-            subject = item['subject']
-            last_modified = item['releasedate']
+            if not filter_olc(item): #do some filtering here
+                continue
+            url = item.get('attr_strurl', None) #the main key
+            if not url:
+                #print json.dumps(i, indent=4)
+                sys.exit(-1)
+            d = olcData(item)
+          
+            urls[url] = d
+            #last_modified = item['releasedate']
             '''
 {u'author': [u'Brule, Shawn'], u'hierarchy': u'82-625-X2017001', u'subject_levels': {u'13': u'Health', u'1306': u'Health/Lifestyle and social conditions', u'130699': u'Health/Lifestyle and social conditions/Other content related to Lifestyle and social conditions'}, u'author_initials': [u'B'], u'id': u'52fb31cd7676cf32', u'featureweight': u'0', u'producttypecode': {u'28': u'Grow Pub publications (pubs with issues & articles)'}, u'subject': {u'130699': u'Health/Lifestyle and social conditions/Other content related to Lifestyle and social conditions'}, u'frc': u'82300', u'archived': {u'2': u'Current'}, u'title': u'Life Satisfaction, 2016', u'other_urls': {u'8': u'https://www150.statcan.gc.ca/n1/pub/82-625-x/2017001/article/54862-eng.pdf', u'17': u'https://www150.statcan.gc.ca/n1/pub/82-625-x/2017001/article/54862-eng.htm'}, u'display_pid': u'82-625-X201700154862', u'conttype': {u'2016': u'Analysis/Stats in brief'}, u'source': [u'Canadian Community Health Survey - Annual Component'], u'score': 1.5014778, u'documenttype': u'article', u'description': u'<p>This is a Health fact sheet about life satisfaction among Canadians. Life satisfaction is a personal subjective assessment of global well-being. The results shown are based on data from the Canadian Community Health Survey.</p>', u'pubyear': u'2017', u'sourcecode': [u'3226'], u'article_id': u'54862', u'productid': u'82-625-X201700154862', u'archive_date': u'2020-01-11T05:00:00Z', u'url': u'https://www150.statcan.gc.ca/n1/pub/82-625-x/2017001/article/54862-eng.htm', u'issueno': u'2017001', u'releasedate': u'2017-09-27T04:00:00Z'}
 '''
@@ -567,64 +541,43 @@ class OLC_Crawler():
         if self.link_filter_func:
             urls = self.link_filter_func(urls)
         data = []
-        while urls:
-            for url,depth in urls.iteritems():
-                break
-            self.handled_urls[url] = True
-            urls.pop(url)
+        for k, d in urls.iteritems():
+            url = k
+            pdf_url = d['pdfurl']
+            olc_url = d['olcurl']
+            title = d['title']
+            content = d['desc']
+            pdf_content = d['pdf_content']
 
-            print url, len(urls), len(self.handled_urls)
-#            if depth == self.depth: continue
-
-            count = 5
-            while count > 0:
-                try:
-                    c = get_web_html(self.get_session(url), url)
-                    # todo: handle status
-                    break
-                except Exception:
-                #ChunkedEncodingError, ReadTimeout, ConnectionError
-                    c = None
-                    count = count - 1
-                    print (traceback.format_exc())
-                    time.sleep(5)
-            if not c:
-                failed_urls.append(url)
-                print "failed:", url
-                continue
-            c = filter_stopindex(c)
-            doc = Doc(url, c, self.excl_htmls, self.incl_htmls, self.lang, self.try_last_modified)
-            doc.process()
-            lastmod = urls_last_modified.get(url, None)
-            if lastmod:
-                doc.last_modified = lastmod # priority
-            if not doc.last_modified:
-                if self.default_last_modified:
-                     doc.last_modified = self.default_last_modified
-                else:
-                    print "error last modified"
-                    error_urls.append(url)
-            links = doc.link()
-            if self.index_filter(doc):
-                data.append(doc.export())
-            print '\t\t^', doc.title
-            #todo: if not content: log warning
-
-            #time.sleep(2)
-
-            if depth == self.depth: continue
-            for link in links:
-                if link in self.handled_urls: continue
-                if link in urls: continue
-                if self.link_filter(link):
-                    urls[link] = depth + 1
-
+            language = self.lang
+            filetype = 'html'
+            encoding = 'utf-8'
+            last_modified = d['last_modified'] or datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            sformat = filetype
+            last_crawled = str(int(time.time()))
+            res = [url, title, content, last_modified, 
+                sformat, language, last_crawled, encoding, 'md5sum', pdf_content, pdf_url, olc_url]
+            d = [ item.replace('\t', ' ').replace('\r', ' ').replace('\d', ' ') if item else '' for item in res]
+            data.append(d)
         write_csv(self.csv_file, data)
-        print "failed urls:", failed_urls
-        print "error parsing urls:", error_urls
+        print "total OLCs:", len(data)
+
+def read_config(filename):
+    with open(filename) as f:
+    # use safe_load instead load
+        return yaml.safe_load(f)
 
 def main():
-    pass
+    confs = read_config(sys.argv[1])
+    if len(sys.argv) >2:
+        for conf in confs:
+            data = conf.get(sys.argv[2], None)
+            if not data: 
+                continue
+            craw = OLC_Crawler(data)
+            craw.process()
+            return
+        return
 
 def test():
     if sys.argv[1]=='download':
@@ -705,6 +658,6 @@ def test():
     sys.exit(0)
 
 if __name__ =='__main__':
-    #main()
-    test()
+    main()
+    #test()
 
