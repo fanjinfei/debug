@@ -442,17 +442,6 @@ def get_solr_pdf_links(lang):
                 pdf_ids.append(b.strip())
     return set(pdf_ids)
 
-def get_pdf_content(lang):
-    _pdf_content = {}
-    _solr_response = requests.get(
-        solr_pdf_url[lang] + 'select?q=*:*&rows=3000000&fl=id,content&wt=json',
-        proxies=proxies)
-    for solr_doc in _solr_response.json()['response']['docs']:
-        if solr_doc.get('id'):
-            url = re.sub(r'^.*ndmpdf[^/]*/', '', solr_doc.get('id'))
-            _pdf_content[url] = solr_doc.get('content')
-    return _pdf_content
-
 def read_json_url(url):
 #    url = 'https://www150.statcan.gc.ca/n1/en/metadata.json?count={count}&type=products&offset={offset}'
     res = []
