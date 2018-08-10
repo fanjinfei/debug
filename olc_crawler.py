@@ -3,8 +3,9 @@ from bs4.element import Comment
 from urlparse import urlparse
 from HTMLParser import HTMLParser
 from PyPDF2 import PdfFileReader
-import sys
+import sys,os
 import re
+import tempfile
 import requests
 import logging
 import yaml, json
@@ -17,10 +18,12 @@ import traceback
 import time
 from datetime import datetime
 
-from crawler_base import write_csv, read_csv, read_jsonfile
+from crawler_base import write_csv, read_csv, read_jsonfile, append_csv
 
 def download_file(url):
-    local_filename = '/tmp/tmpparser.pdf'
+    f = tempfile.NamedTemporaryFile(prefix="crawlerXXX", delete=False)
+    local_filename = f.name
+    f.close()
     # NOTE the stream=True parameter
     r = requests.get(url, stream=True)
     with open(local_filename, 'wb') as f:
@@ -31,6 +34,7 @@ def download_file(url):
     return local_filename
 
 def getPdfContent(url):
+    res = ''
     try:
         filename = download_file(url)
         with open(filename, 'rb') as f:
@@ -41,9 +45,13 @@ def getPdfContent(url):
                 cs = reader.getPage(page).extractText().split('\n')
                 for c in cs:
                     contents.append(c.strip())
-            return ' '.join(contents)
+            res = ' '.join(contents)
     except:
-        return ''
+        pass
+    finally:
+        if os.path.exits(filename):
+            os.unlink(filename)
+    return res
 
 def clean_rec2(b,lan):
     b = re.sub(r"\\\t", " ", b)
@@ -123,8 +131,8 @@ def putUrlPdfLink( b, lan): #set pdf to url
 #
 def filter_olc(value, lan='en'):
 
-    if value.get('releasedate')[:10] not in [ '2018-08-03', '2018-08-02'] :
-        return False
+    #if value.get('releasedate')[:10] not in [ '2018-08-03', '2018-08-02'] :
+    #    return False
 
     if value.get('discontinued'): return False
 
@@ -406,11 +414,11 @@ def filter_olc(value, lan='en'):
        
     return True
 
-def olcData(val):
+def olcData(val, getpdf=True):
     data = {
         'url': val['attr_strurl'],
-        'title': val['attr_fldtitle'],
-        'desc': val['attr_flddesc'],
+        'title': val.get('attr_fldtitle', ''),
+        'desc': val.get('attr_flddesc', ''),
         'pdfurl': val.get('attr_strpdflink', ''),
         'olcurl': val.get('attr_strolclink', ''),
         'pdf_content':'',
@@ -422,8 +430,10 @@ def olcData(val):
         slink = data['pdfurl']
     else:
         slink = ''
-    if slink:
+    if slink and getpdf:
         data['pdf_content'] = getPdfContent(slink)
+    if not data['title'] or not data['desc']:
+        print 'empty entry: ', data['url']
     return data
     
 solr_pdf_url = {
@@ -486,6 +496,8 @@ class OLC_Crawler():
         self.excls = data.get('exclude_patterns', [])
         self.follow_only = data.get('follow_link_not_index', [])
         self.csv_file = data['output_file']
+        if os.path.isfile(self.csv_file):
+            os.remove(self.csv_file)
         self.default_last_modified = data.get('default_last_modified', None)
         self.try_last_modified = data.get('try_last_modified', True)
         self.link_filter_func = link_filters.get(data.get('link_filter_function', None), None)
@@ -503,6 +515,12 @@ class OLC_Crawler():
             self.skip_index_patterns.append(re.compile(p, re.I))
         self.do_index = re.compile('Cadotte', re.I)
 
+    def add2csv(self, data):
+        if not os.path.isfile(self.csv_file):
+            write_csv(self.csv_file, data)
+        else:
+            append_csv(self.csv_file, data)
+
     def get_start_links(self, urls, urls_modified):
         total, res = read_json_url(self.start_links[0])
         for item in res:
@@ -512,9 +530,7 @@ class OLC_Crawler():
             if not url:
                 #print json.dumps(i, indent=4)
                 sys.exit(-1)
-            d = olcData(item)
-          
-            urls[url] = d
+            urls[url] = item
             #last_modified = item['releasedate']
             '''
 {u'author': [u'Brule, Shawn'], u'hierarchy': u'82-625-X2017001', u'subject_levels': {u'13': u'Health', u'1306': u'Health/Lifestyle and social conditions', u'130699': u'Health/Lifestyle and social conditions/Other content related to Lifestyle and social conditions'}, u'author_initials': [u'B'], u'id': u'52fb31cd7676cf32', u'featureweight': u'0', u'producttypecode': {u'28': u'Grow Pub publications (pubs with issues & articles)'}, u'subject': {u'130699': u'Health/Lifestyle and social conditions/Other content related to Lifestyle and social conditions'}, u'frc': u'82300', u'archived': {u'2': u'Current'}, u'title': u'Life Satisfaction, 2016', u'other_urls': {u'8': u'https://www150.statcan.gc.ca/n1/pub/82-625-x/2017001/article/54862-eng.pdf', u'17': u'https://www150.statcan.gc.ca/n1/pub/82-625-x/2017001/article/54862-eng.htm'}, u'display_pid': u'82-625-X201700154862', u'conttype': {u'2016': u'Analysis/Stats in brief'}, u'source': [u'Canadian Community Health Survey - Annual Component'], u'score': 1.5014778, u'documenttype': u'article', u'description': u'<p>This is a Health fact sheet about life satisfaction among Canadians. Life satisfaction is a personal subjective assessment of global well-being. The results shown are based on data from the Canadian Community Health Survey.</p>', u'pubyear': u'2017', u'sourcecode': [u'3226'], u'article_id': u'54862', u'productid': u'82-625-X201700154862', u'archive_date': u'2020-01-11T05:00:00Z', u'url': u'https://www150.statcan.gc.ca/n1/pub/82-625-x/2017001/article/54862-eng.htm', u'issueno': u'2017001', u'releasedate': u'2017-09-27T04:00:00Z'}
@@ -530,7 +546,8 @@ class OLC_Crawler():
         if self.link_filter_func:
             urls = self.link_filter_func(urls)
         data = []
-        for k, d in urls.iteritems():
+        for k, item in urls.iteritems():
+            d = olcData(item)
             url = k
             pdf_url = d['pdfurl']
             olc_url = d['olcurl']
@@ -546,9 +563,16 @@ class OLC_Crawler():
             last_crawled = str(int(time.time()))
             res = [url, title, content, last_modified, 
                 sformat, language, last_crawled, encoding, 'md5sum', pdf_content, pdf_url, olc_url]
-            d = [ item.replace('\t', ' ').replace('\r', ' ').replace('\d', ' ') if item else '' for item in res]
+            d = [ item.replace('\t', ' ').replace('\r', ' ').replace('\n', ' ').replace('\d', ' ') if item else '' for item in res]
             data.append(d)
-        write_csv(self.csv_file, data)
+            #if len(data)%10 ==0:
+            #print datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ"), len(data)
+            if len(data)>=100:
+                self.add2csv(data)
+                data = []
+        if len(data) > 0:
+            self.add2csv(data)
+            data = []
         print "total OLCs:", len(data)
 
 def read_config(filename):
@@ -570,8 +594,8 @@ def main():
 
 def test():
     if sys.argv[1]=='download':
-#        url = 'https://www150.statcan.gc.ca/n1/en/metadata.json?producttypecode=11,20,25,26,27,28&count={count}&type=products&offset={offset}&releasedate={release_date}'
-        url = 'https://www150.statcan.gc.ca/n1/en/metadata.json?producttypecode=11,20,25,26,27,28&count={count}&type=products&offset={offset}&releasedate=2018-08-02'
+        url = 'https://www150.statcan.gc.ca/n1/en/metadata.json?producttypecode=11,20,25,26,27,28&count={count}&type=products&offset={offset}'
+#        url = 'https://www150.statcan.gc.ca/n1/en/metadata.json?producttypecode=11,20,25,26,27,28&count={count}&type=products&offset={offset}&releasedate=2018-08-02'
 #full_url = "https://www150.statcan.gc.ca/n1/{lan}/metadata.json?producttypecode=11,20,25,26,27,28&count={count}&offset={offset}&releasedate={release_date}"    new release only
         t, r = read_json_url(url)
         for i in r:
@@ -600,7 +624,7 @@ def test():
             dedup[url] = [i]
             src.append(i)
     for i in src:
-        d = olcData(i)
+        d = olcData(i, False)
         print 'url', d['url']
         print 'tile', d['title']
         print 'desc', d['desc']
@@ -611,6 +635,8 @@ def test():
         print 'olc', d['olcurl']
         print 'content', d['pdf_content']
         print '*******************************'
+        break
+    print len(src)
     sys.exit(0)
 
     #ds:olc && release_date_dt:[2018-08-03T00:00:00Z TO 2018-08-04T00:00:00Z]
@@ -647,6 +673,8 @@ def test():
     sys.exit(0)
 
 if __name__ =='__main__':
+    if False:
+        test()
+        sys.exit(0)
     main()
-    #test()
 

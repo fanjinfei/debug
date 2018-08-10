@@ -23,6 +23,13 @@ import time
 from datetime import datetime
 import dateparser
 
+def append_csv(filename, rows):
+    outf=open(filename, 'ab')
+    writer = unicodecsv.writer(outf, delimiter='\t')
+
+    for row in rows:
+        writer.writerow(row)
+
 def write_csv(filename, rows, header=None):
     outf=open(filename, 'wb')
     outf.write(codecs.BOM_UTF8)
