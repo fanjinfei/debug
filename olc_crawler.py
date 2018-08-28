@@ -49,7 +49,7 @@ def getPdfContent(url):
     except:
         pass
     finally:
-        if os.path.exits(filename):
+        if os.path.exists(filename):
             os.unlink(filename)
     return res
 
@@ -595,6 +595,7 @@ def main():
 def test():
     if sys.argv[1]=='download':
         url = 'https://www150.statcan.gc.ca/n1/en/metadata.json?producttypecode=11,20,25,26,27,28&count={count}&type=products&offset={offset}'
+        url = 'https://www150.statcan.gc.ca/n1/fr/metadata.json?producttypecode=11,20,25,26,27,28&count={count}&type=products&offset={offset}'
 #        url = 'https://www150.statcan.gc.ca/n1/en/metadata.json?producttypecode=11,20,25,26,27,28&count={count}&type=products&offset={offset}&releasedate=2018-08-02'
 #full_url = "https://www150.statcan.gc.ca/n1/{lan}/metadata.json?producttypecode=11,20,25,26,27,28&count={count}&offset={offset}&releasedate={release_date}"    new release only
         t, r = read_json_url(url)
@@ -673,7 +674,7 @@ def test():
     sys.exit(0)
 
 if __name__ =='__main__':
-    if False:
+    if sys.argv[1] in ['download']:
         test()
         sys.exit(0)
     main()

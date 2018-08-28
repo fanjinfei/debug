@@ -17,3 +17,21 @@
     try_last_modified: False
     link_filter_function: olc_archive_filter
 
+- ndm_olc_fr:
+    name: ndm olc french
+    lang: fr
+    archive_file: /tmp/ndm_olc_fr-crawled.csv
+    output_file: /tmp/ndm_olc_fr.csv
+    depth: 0
+    crawler: olc
+    start_links:
+      - "https://www150.statcan.gc.ca/n1/fr/metadata.json?count={count}&type=products&offset={offset}"
+#      - "https://www150.statcan.gc.ca/n1/en/metadata.json?producttypecode=11,20,25,26,27,28&count={count}&type=products&offset={offset}&releasedate=2018-08-02"
+    include_patterns:
+      - .*
+    exclude_html_sections:
+      - header
+      - footer
+    try_last_modified: False
+    link_filter_function: olc_archive_filter
+
