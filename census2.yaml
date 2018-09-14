@@ -1,0 +1,130 @@
+# ECN site search: no_proxy=* 
+- census_en:
+    name: census english
+    lang: en
+    output_file: /tmp/census_en.csv
+    start_links:
+      - http://www12.statcan.gc.ca/census-recensement/2016/dp-pd/dv-vd/cpdv-vdpr/index-eng.cfm
+      - http://www12.statcan.gc.ca/census-recensement/2016/dp-pd/prof/index.cfm?Lang=E
+      - http://www12.statcan.gc.ca/census-recensement/2016/ref/index-eng.cfm
+      - http://www12.statcan.gc.ca/census-recensement/2016/geo/index-eng.cfm
+      - http://www12.statcan.gc.ca/census-recensement/index-eng.cfm
+    depth: 1
+    exclude_html_sections:
+      - header
+      - footer
+    include_patterns:
+      - ^http://www12.statcan.gc.ca/.*
+    exclude_patterns:
+      - http[s]*://www97\.statcan\.gc\.ca/.*
+      - .*\?Temporal=.*
+      - http[s]*://www12\.statcan\.gc\.ca/census-recensement/2016/dp-pd/prof/details/Page\.cfm.*
+      - http[s]*://www12\.statcan\.gc\.ca/census-recensement/2011/dp-pd/prof/.*
+      - http[s]*://www\.statcan\.gc\.ca/.*
+      - http[s]*://www5\.statcan\.gc\.ca/.*
+      - http[s]*://www23\.statcan\.gc\.ca/.*
+      - http[s]*://geodepot\.statcan\.ca/.*
+      - http[s]*://icn-rci\.statcan\.ca/.*
+      - http[s]*://www12\.statcan\.gc\.ca/census-recensement/2016/dp-pd/prof/search-recherche/lst/results-resultats\.cfm.*
+      - http[s]*://www12\.statcan\.gc\.ca/census-recensement/2016/dp-pd/prof/details/page\.cfm.*
+      - .*\?GEOCODE=.*
+      - http[s]*://www\.canada\.ca/.*
+      - ^http://www12.statcan.gc.ca/.*-fra.cfm.*
+      - ^http://www12.statcan.gc.ca/.*Lang=F.*
+      - ^http://www12.statcan.gc.ca/.*LANG=Fra.*
+
+- census_detail_en:
+    name: census english
+    lang: en
+    archive_file: /tmp/census_detail_en-crawled.csv
+    output_file: /tmp/census_detail_en.csv
+    start_links:   
+      - http://www120.statcan.gc.ca/dotpages/census2016/dot_E_FOGS.html
+      - http://www120.statcan.gc.ca/dotpages/census2016/CensusProfile_DotPage_E_2017-02-27.html
+      
+      - http://www120.statcan.gc.ca/dotpages/census2016/Census2016DataTables_DotPage_E.html
+      - http://www120.statcan.gc.ca/dotpages/census2016/20171129dt_dot_E.html
+      - http://www120.statcan.gc.ca/dotpages/census2016/20171025dt_dot_E.html
+      - http://www120.statcan.gc.ca/dotpages/census2016/dt_dot_E.html
+      - http://www120.statcan.gc.ca/dotpages/census2016/20170912dt_dot_E.html
+      - http://www120.statcan.gc.ca/dotpages/2016/tbt-dot-eng.htm
+
+    depth: 1
+    exclude_html_sections:
+      - header
+      - footer
+    include_patterns:
+      - ^http://www12.statcan.gc.ca/.*
+    exclude_patterns:
+      - ^http://www12.statcan.gc.ca/.*file-fichier-info.cfm*
+      - ^http://www12.statcan.gc.ca/.*GetFile.cfm*
+      - ^http://www12.statcan.gc.ca/.*-fra.cfm.*
+      - ^http://www12.statcan.gc.ca/.*Lang=F.*
+      - ^http://www12.statcan.gc.ca/.*LANG=Fra.*
+
+- census_fr:
+    name: census french
+    lang: fr
+    output_file: /tmp/census_fr.csv
+    start_links:
+      - http://www12.statcan.gc.ca/census-recensement/2016/dp-pd/dv-vd/cpdv-vdpr/index-fra.cfm
+      - http://www12.statcan.gc.ca/census-recensement/2016/dp-pd/prof/index.cfm?Lang=F
+      - http://www12.statcan.gc.ca/census-recensement/2016/ref/index-fra.cfm
+      - http://www12.statcan.gc.ca/census-recensement/2016/geo/index-fra.cfm
+      - http://www12.statcan.gc.ca/census-recensement/index-fra.cfm
+    depth: 1
+    exclude_html_sections:
+      - header
+      - footer
+    include_patterns:
+      - ^http://www12.statcan.gc.ca/.*
+    exclude_patterns:
+      - http[s]*://www97\.statcan\.gc\.ca/.*
+      - .*\?Temporal=.*
+      - http://www12\.statcan\.gc\.ca/census-recensement/2011/dp-pd/prof/.*
+      - http://www12\.statcan\.gc\.ca/census-recensement/2016/dp-pd/prof/details/Page\.cfm.*
+      - http://www\.statcan\.gc\.ca/.*
+      - http://www5\.statcan\.gc\.ca/.*
+      - http://www23\.statcan\.gc\.ca/.*
+      - http://geodepot\.statcan\.ca/.*
+      - http://icn-rci\.statcan\.ca/.*
+      - http://www12\.statcan\.gc\.ca/census-recensement/2016/dp-pd/prof/search-recherche/lst/results-resultats\.cfm.*
+      - http://www12\.statcan\.gc\.ca/census-recensement/2016/dp-pd/prof/details/page\.cfm.*
+      - .*\?GEOCODE=.*
+      - https://www\.canada\.ca/.*
+      - ^http://www12.statcan.gc.ca/.*file-fichier-info.cfm*
+      - ^http://www12.statcan.gc.ca/.*GetFile.cfm*
+      - ^http://www12.statcan.gc.ca/.*-eng.cfm.*
+      - ^http://www12.statcan.gc.ca/.*Lang=E.*
+      - ^http://www12.statcan.gc.ca/.*LANG=Eng.*
+
+- census_detail_fr:
+    name: census french
+    lang: fr
+    archive_file: /tmp/census_detail_fr-crawled.csv
+    output_file: /tmp/census_detail_fr.csv
+    start_links:
+      - http://www120.statcan.gc.ca/dotpages/census2016/dot_F_FOGS.html
+      - https://www120.statcan.gc.ca/dotpages/census2016/CensusProfile_DotPage_F_2017-02-27.html
+      
+      - http://www120.statcan.gc.ca/dotpages/census2016/Census2016DataTables_DotPage_F.html
+      - http://www120.statcan.gc.ca/dotpages/census2016/20171129dt_dot_F.html
+      - http://www120.statcan.gc.ca/dotpages/census2016/20171025dt_dot_F.html
+      - http://www120.statcan.gc.ca/dotpages/census2016/dt_dot_F.html
+      - http://www120.statcan.gc.ca/dotpages/census2016/20170912dt_dot_F.html
+      - http://www120.statcan.gc.ca/dotpages/2016/tbt-dot-fra.htm
+    depth: 1
+    exclude_html_sections:
+      - header
+      - footer
+    include_patterns:
+      - ^http://www12.statcan.gc.ca/.*
+    exclude_patterns:
+      - ^http://www12.statcan.gc.ca/.*file-fichier-info.cfm*
+      - ^http://www12.statcan.gc.ca/.*GetFile.cfm*
+      - ^http://www12.statcan.gc.ca/.*-eng.cfm.*
+      - ^http://www12.statcan.gc.ca/.*Lang=E.*
+      - ^http://www12.statcan.gc.ca/.*LANG=Eng.*
+
+
+

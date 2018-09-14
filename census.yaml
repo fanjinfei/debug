@@ -1,0 +1,39 @@
+# ECN site search: no_proxy=* 
+- census_en:
+    name: census english
+    lang: en
+    output_file: /tmp/census_en.csv
+    start_links:
+      - http://www12.statcan.gc.ca/census-recensement/index-eng.cfm?HPA=1
+    depth: -1
+    exclude_html_sections:
+      - header
+      - footer
+    include_patterns:
+      - ^http://www12.statcan.gc.ca/.*-eng.cfm.*
+      - ^http://www12.statcan.gc.ca/.*Lang=E.*
+      - ^http://www12.statcan.gc.ca/.*LANG=Eng.*
+    exclude_patterns:
+      - ^http://www12.statcan.gc.ca/.*file-fichier-info.cfm*
+      - ^http://www12.statcan.gc.ca/.*GetFile.cfm*
+
+- census_fr:
+    name: census french
+    lang: fr
+    output_file: /tmp/census_fr.csv
+    start_links:
+      - http://www12.statcan.gc.ca/census-recensement/index-fra.cfm?HPA=1
+    depth: -1
+    exclude_html_sections:
+      - header
+      - footer
+    include_patterns:
+      - ^http://www12.statcan.gc.ca/.*-fra.cfm.*
+      - ^http://www12.statcan.gc.ca/.*Lang=F.*
+      - ^http://www12.statcan.gc.ca/.*LANG=Fra.*
+    exclude_patterns:
+      - ^http://www12.statcan.gc.ca/.*file-fichier-info.cfm*
+      - ^http://www12.statcan.gc.ca/.*GetFile.cfm*
+
+
+
