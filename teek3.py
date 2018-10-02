@@ -4,7 +4,7 @@ import sys
 import shutil
 
 #g = LocalMemoryGraph()
-shutil.rmtree('/tmp/a.db')
+#shutil.rmtree('/tmp/a.db')
 g = LmdbGraph('/tmp/a.db')
 
 book1 = g.add_node(kind='book', name='python tutorial', author='tim aaaa', thema='programming')
