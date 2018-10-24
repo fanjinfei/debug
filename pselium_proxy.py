@@ -112,6 +112,7 @@ def use_phantomjs():
 		#capa['phantomjs.page.customHeaders.Proxy-Authorization'] = authentication_token
 		capa['phantomjs.page.customHeaders.Proxy-Authorization'] = authentication_token
 		#driver = webdriver.PhantomJS(desired_capabilities=capa, service_args=service_args)
+		#executable_path='driver/bin/phantomjs.exe'
 		driver = webdriver.PhantomJS(service_args=service_args)
 		print service_args
 	else:
