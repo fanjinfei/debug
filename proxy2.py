@@ -187,9 +187,9 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
                     self.tls.conns[origin] = httplib.HTTPSConnection(netloc, timeout=self.timeout)
                 else:
                     self.tls.conns[origin] = httplib.HTTPConnection(netloc, timeout=self.timeout)
-            self.tls.conns[origin] = httplib.HTTPConnection("http://adsdpro:Sknet4nv%21@stcweb.statcan.ca:80', timeout=self.timeout)
+            self.tls.conns[origin] = httplib.HTTPConnection("http://adsdpro:Sknet4nv%21@stcweb.statcan.ca:80", timeout=self.timeout)
             conn = self.tls.conns[origin]
-            conn.set_tunnel(
+#            conn.set_tunnel(
             conn.request(self.command, path, req_body, dict(req.headers))
             res = conn.getresponse()
 
