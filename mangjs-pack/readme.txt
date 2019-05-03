@@ -12,3 +12,5 @@ http://blog.teamtreehouse.com/bundling-angular-with-webpack
 npm install --save-dev angular-translate angular-route angular
 
 npm run prod
+
+add "content security policy" header to the final app's html.
