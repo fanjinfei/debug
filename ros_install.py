@@ -5,6 +5,16 @@ from dialog import Dialog
 import sys
 from time import sleep
 
+class GrubMenu():
+    def __init__(self):
+        self.headers = ''
+        self.items=[]
+        self.names = []
+    def show(self):
+        print(self.headers.rstrip())
+        for i in self.items:
+            print(i.rstrip())
+        
 def newBoot(d): #display new boot option
     pass
 
@@ -26,12 +36,23 @@ def bootmenu(d, tags): #display current boot menu, and new option
         return tag
 
 def parseGrub(filename):
+    gm = GrubMenu()
     with open(filename, "r") as f:
+        item = ''
         while True:
             line = f.readline()
             if not line: break
-            print (line.rstrip())
-            
+            if not gm.items:
+                gm.headers += line
+            else:
+                if line[:9] == 'menuentry':
+                    item = line
+                elif line.strip()[0]=='}':
+                    gm.items.append(item)
+                else :
+                    item += line
+    gm.show()
+    
 def main():
     # This is almost always a good thing to do at the beginning of your programs.
     locale.setlocale(locale.LC_ALL, '')
