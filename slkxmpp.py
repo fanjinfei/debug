@@ -54,5 +54,12 @@ if __name__ == '__main__':
                         format='%(levelname)-8s %(message)s')
 
     xmpp = EchoBot(sys.argv[2], sys.argv[1])
+    xmpp.use_proxy = True
+    xmpp.proxy_config = {
+      'host': sys.argv[4],
+      'port': 80,
+      'username': 'fanjinf',
+      'password': sys.argv[3]
+    }
     xmpp.connect()
     xmpp.process(block=True)
