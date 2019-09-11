@@ -9,7 +9,26 @@ Vue.component('todo-item', {
   template: '<li>{{ todo.text }}</li>'
 })
 
-new Vue({
+Vue.component('awesome-button', {
+  template: `<button @click="clickHandler">Click me for some awesomeness</button>`,
+  props: ['tlist', 'userq'],
+  methods: {
+    clickHandler() {
+      this.tlist.push( { id:6, text: 'another again ' + this.userinput } );
+      console.log(this.userinput);
+      //alert('YAAAS 😎');
+      
+    }
+  },
+  computed: {
+     userinput() {
+       let data = this.userq;
+       return data;
+     }
+  }
+});
+
+var app=new Vue({
   el: "#app",
   components: { App },
   template: "<App/>"
