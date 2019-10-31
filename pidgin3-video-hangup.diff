@@ -1,0 +1,429 @@
+diff -r 7c9c4d700ed2 libpurple/media.c
+--- a/libpurple/media.c	Thu Sep 19 22:18:57 2019 -0500
++++ b/libpurple/media.c	Fri Oct 18 13:49:34 2019 -0400
+@@ -1011,13 +1011,14 @@
+ 	PurpleMediaSession *session;
+ 
+ 	g_return_val_if_fail(PURPLE_IS_MEDIA(media), FALSE);
+-
++printf("here 3\n");
+ 	if (!purple_media_backend_add_stream(media->priv->backend,
+ 			sess_id, who, type, initiator, transmitter,
+ 			num_params, params)) {
+ 		purple_debug_error("media", "Error adding stream.\n");
+ 		return FALSE;
+ 	}
++printf("here 4\n");
+ 
+ 	session = purple_media_get_session(media, sess_id);
+ 
+@@ -1050,7 +1051,7 @@
+ 				0, PURPLE_MEDIA_STATE_NEW,
+ 				session->id, who);
+ 	}
+-
++printf("here 5\n");
+ 	return TRUE;
+ #else
+ 	return FALSE;
+diff -r 7c9c4d700ed2 libpurple/media/backend-fs2.c
+--- a/libpurple/media/backend-fs2.c	Thu Sep 19 22:18:57 2019 -0500
++++ b/libpurple/media/backend-fs2.c	Fri Oct 18 13:49:34 2019 -0400
+@@ -1056,10 +1056,10 @@
+ 
+ 		session = get_session_from_fs_stream(self, stream);
+ 
+-		purple_debug_info("backend-fs2",
++/*		purple_debug_info("backend-fs2",
+ 				"got new local candidate: %s\n",
+ 				local_candidate->foundation);
+-
++*/
+ 		g_object_get(stream, "participant", &participant, NULL);
+ 		name = g_object_get_data(G_OBJECT(participant), "purple-name");
+ 
+@@ -1208,7 +1208,7 @@
+ 
+ 			if (session->session != fssession)
+ 				continue;
+-
++printf("JINFEI: fs2 codecs-changed signal.\n");
+ 			session_id = g_strdup(session->id);
+ 			g_signal_emit_by_name(self, "codecs-changed",
+ 					session_id);
+@@ -1219,7 +1219,28 @@
+ 	}
+ }
+ 
+-static void
++#include <execinfo.h>
++/* Obtain a backtrace and print it to stdout. */
++void
++print_trace (void)
++{
++  void *array[10];
++  size_t size;
++  char **strings;
++  size_t i;
++
++  size = backtrace (array, 10);
++  strings = backtrace_symbols (array, size);
++
++  printf ("Obtained %zd stack frames.\n", size);
++
++  for (i = 0; i < size; i++)
++     printf ("%s\n", strings[i]);
++
++  free (strings);
++}
++
++void
+ gst_handle_message_error(GstBus *bus, GstMessage *msg,
+ 		PurpleMediaBackendFs2 *self)
+ {
+@@ -1231,7 +1252,8 @@
+ 
+ 	GError *error = NULL;
+ 	gchar *debug_msg = NULL;
+-
++printf("here 1\n");
++print_trace();
+ 	gst_message_parse_error(msg, &error, &debug_msg);
+ 	purple_debug_error("backend-fs2", "gst error %s\ndebugging: %s\n",
+ 			error->message, debug_msg);
+@@ -1275,7 +1297,7 @@
+ 	purple_media_end(priv->media, NULL, NULL);
+ }
+ 
+-static gboolean
++ gboolean
+ gst_bus_cb(GstBus *bus, GstMessage *msg, PurpleMediaBackendFs2 *self)
+ {
+ 	switch(GST_MESSAGE_TYPE(msg)) {
+@@ -1506,7 +1528,7 @@
+ 				GST_BIN(priv->confbin));
+ 		fs_element_added_notifier_set_properties_from_keyfile(priv->notifier, default_props);
+ 	}
+-
++printf("here 2\n");
+ 	g_signal_connect(G_OBJECT(bus), "message",
+ 			G_CALLBACK(gst_bus_cb), self);
+ 	gst_object_unref(bus);
+@@ -1535,7 +1557,7 @@
+ 	return TRUE;
+ }
+ 
+-static gboolean
++ gboolean
+ create_src(PurpleMediaBackendFs2 *self, const gchar *sess_id,
+ 		PurpleMediaSessionType type)
+ {
+@@ -1549,7 +1571,7 @@
+ 	GstElement *src;
+ 	GstPad *sinkpad, *srcpad;
+ 	GstPad *ghost = NULL;
+-
++printf("  *********************\nJINFEI: creating session source.\n**************************\n");
+ 	if ((type_direction & FS_DIRECTION_SEND) == 0)
+ 		return TRUE;
+ 
+@@ -1625,10 +1647,15 @@
+ 	} else {
+ 		srcpad = gst_element_get_request_pad(session->tee, "src_%u");
+ 	}
++	if (session->type & PURPLE_MEDIA_SEND_VIDEO) {
++printf("  *********************\nJINFEI: video session source.\n**************************\n");
++	}
+ 
+ 	purple_debug_info("backend-fs2", "connecting pad: %s\n",
+ 			  gst_pad_link(srcpad, sinkpad) == GST_PAD_LINK_OK
+ 			  ? "success" : "failure");
++	gst_element_set_state(session->src, GST_STATE_PLAYING);
++
+ 	gst_element_set_locked_state(session->src, FALSE);
+ 	gst_object_unref(session->src);
+ 	gst_object_unref(sinkpad);
+@@ -1638,7 +1665,6 @@
+ 
+ 	purple_debug_info("backend-fs2", "create_src: setting source "
+ 		"state to GST_STATE_PLAYING - it may hang here on win32\n");
+-	gst_element_set_state(session->src, GST_STATE_PLAYING);
+ 	purple_debug_info("backend-fs2", "create_src: state set\n");
+ 
+ 	return TRUE;
+@@ -2190,7 +2216,7 @@
+ 				"Error creating the stream.\n");
+ 		return FALSE;
+ 	}
+-
++printf("JINFEI: fs2 add stream done.\n");
+ 	return TRUE;
+ }
+ 
+diff -r 7c9c4d700ed2 libpurple/mediamanager.c
+--- a/libpurple/mediamanager.c	Thu Sep 19 22:18:57 2019 -0500
++++ b/libpurple/mediamanager.c	Fri Oct 18 13:49:34 2019 -0400
+@@ -324,6 +324,7 @@
+ 		GKeyFile *keyfile;
+ 		GstBus *bus;
+ 		manager->priv->pipeline = gst_pipeline_new(NULL);
++printf("  *********************\nJINFEI: create gst_pipeline_new.\n**************************\n");
+ 
+ 		bus = gst_pipeline_get_bus(
+ 				GST_PIPELINE(manager->priv->pipeline));
+@@ -717,8 +718,9 @@
+ purple_media_manager_get_video_caps(PurpleMediaManager *manager)
+ {
+ 	if (manager->priv->video_caps == NULL)
+-		manager->priv->video_caps = gst_caps_from_string("video/x-raw,"
+-			"width=[250,352], height=[200,288], framerate=[1/1,20/1]");
++		manager->priv->video_caps = gst_caps_from_string("video/x-raw, format=YUY2, "
++			"width=320, height=240, framerate=30/1");
++printf("VIDEO CAPS: %s\n", gst_caps_to_string(manager->priv->video_caps));
+ 	return manager->priv->video_caps;
+ }
+ #endif /* USE_VV */
+@@ -1102,6 +1104,7 @@
+ 	return info;
+ }
+ 
++extern void print_trace();
+ GstElement *
+ purple_media_manager_get_element(PurpleMediaManager *manager,
+ 		PurpleMediaSessionType type, PurpleMedia *media,
+@@ -1152,6 +1155,7 @@
+ 				GstElement *videoscale;
+ 				GstElement *capsfilter;
+ 
++print_trace();
+ 				videoscale = gst_element_factory_make("videoscale", NULL);
+ 				capsfilter = gst_element_factory_make("capsfilter", "protocol_video_caps");
+ 
+@@ -1159,7 +1163,7 @@
+ 					"caps", purple_media_manager_get_video_caps(manager), NULL);
+ 
+ 				gst_bin_add_many(GST_BIN(bin), videoscale, capsfilter, NULL);
+-				gst_element_link_many(ret, videoscale, capsfilter, tee, NULL);
++				gst_element_link_many(ret, capsfilter, videoscale, tee, NULL);
+ 			} else
+ 				gst_element_link(ret, tee);
+ 
+@@ -1987,7 +1991,7 @@
+ 	device_class = gst_device_get_device_class(device);
+ 
+ 	id = g_strdup_printf("%s %s", device_class, name);
+-
++printf("jinfei %s %s\n", device_class, name);
+ 	type = gst_class_to_purple_element_type(device_class);
+ 
+ 	info = g_object_new(PURPLE_TYPE_MEDIA_ELEMENT_INFO,
+@@ -2178,14 +2182,25 @@
+ 	return src;
+ }
+ 
+-static GstElement *
++//extern void print_trace(void);
++GstElement *
+ test_video_create_cb(PurpleMediaElementInfo *info, PurpleMedia *media,
+ 		const gchar *session_id, const gchar *participant)
+ {
++#if 0
++printf("here 11\n");
++//print_trace();
++//	GstElement *src = gst_element_factory_make("autovideosrc  ! decodebin ! videoconvert ! x264enc tune=zerolatency ! mpegtsmux ", "source");
++	GstElement *src = gst_element_factory_make("autovideosrc", "source");
++	g_object_set (src, "pattern", 0, NULL);
++
++	//GstElement *filter = gst_element_factory_make("capsfilter", "source");
++        //g_object_set(filter, "caps", Gst.Caps.from_string("video/x-raw , width=[300,500] , height=[200,500], framerate=[20/1,30/1]"))
++#else
+ 	GstElement *src = gst_element_factory_make("videotestsrc", NULL);
+ 
+ 	g_object_set(src, "is-live", TRUE, NULL);
+-
++#endif
+ 	return src;
+ }
+ 
+diff -r 7c9c4d700ed2 libpurple/plugins/meson.build
+--- a/libpurple/plugins/meson.build	Thu Sep 19 22:18:57 2019 -0500
++++ b/libpurple/plugins/meson.build	Fri Oct 18 13:49:34 2019 -0400
+@@ -6,6 +6,11 @@
+ 	    name_prefix : '',
+ 	    install : true, install_dir : PURPLE_PLUGINDIR)
+ 
++	automediaaccept = library('automediaaccept', 'automediaaccept.c',
++	    dependencies : [libpurple_dep, glib],
++	    name_prefix : '',
++	    install : true, install_dir : PURPLE_PLUGINDIR)
++
+ 	buddynote = library('buddynote', 'buddynote.c',
+ 	    dependencies : [libpurple_dep],
+ 	    name_prefix : '',
+diff -r 7c9c4d700ed2 libpurple/protocols/jabber/jabber.c
+--- a/libpurple/protocols/jabber/jabber.c	Thu Sep 19 22:18:57 2019 -0500
++++ b/libpurple/protocols/jabber/jabber.c	Fri Oct 18 13:49:34 2019 -0400
+@@ -3301,6 +3301,7 @@
+ }
+ #endif
+ 
++extern void print_trace (void) ;
+ gboolean
+ jabber_initiate_media(PurpleAccount *account, const char *who,
+ 		      PurpleMediaSessionType type)
+@@ -3311,6 +3312,8 @@
+ 	JabberBuddy *jb;
+ 	JabberBuddyResource *jbr = NULL;
+ 	char *resource = NULL;
++printf("jinfei jabber init_media() ... \n");
++print_trace ();
+ 
+ 	if (!js) {
+ 		purple_debug_error("jabber",
+@@ -3355,8 +3358,9 @@
+ 				JINGLE_APP_RTP_SUPPORT_AUDIO) &&
+ 			jabber_resource_has_capability(jbr, NS_GOOGLE_VOICE))
+ 			return jabber_google_session_initiate(js, who, type);
+-		else
+-			return jingle_rtp_initiate_media(js, who, type);
++		else {
++printf("jinfei jabber here 1\n");
++			return jingle_rtp_initiate_media(js, who, type);}
+ 	} else if(!jb->resources->next) {
+ 		/* only 1 resource online (probably our most common case)
+ 		 * so no need to ask who to initiate with */
+diff -r 7c9c4d700ed2 libpurple/protocols/jabber/jingle/rtp.c
+--- a/libpurple/protocols/jabber/jingle/rtp.c	Thu Sep 19 22:18:57 2019 -0500
++++ b/libpurple/protocols/jabber/jingle/rtp.c	Fri Oct 18 13:49:34 2019 -0400
+@@ -276,7 +276,7 @@
+ 	}
+ 
+ 	purple_media_set_protocol_data(media, session);
+-
++printf("rtp here 4\n");
+ 	/* connect callbacks */
+ 	g_signal_connect(G_OBJECT(media), "candidates-prepared",
+ 				 G_CALLBACK(jingle_rtp_candidates_prepared_cb), session);
+@@ -377,14 +377,16 @@
+ 		is_creator = !jingle_session_is_initiator(session);
+ 	g_free(creator);
+ 
++printf("rtp here 11\n");
+ 	if(!purple_media_add_stream(media, name, remote_jid,
+ 			type, is_creator, transmitter, num_params, params)) {
++printf("rtp here 13\n");
+ 		purple_media_end(media, NULL, NULL);
+ 		/* TODO: How much clean-up is necessary here? (does calling
+ 		         purple_media_end lead to cleaning up Jingle structs?) */
+ 		return FALSE;
+ 	}
+-
++printf("rtp here 12\n");
+ 	g_free(name);
+ 	g_free(media_type);
+ 	g_free(remote_jid);
+@@ -552,15 +554,17 @@
+ 			PurpleMedia *media;
+ 
+ 			session = jingle_content_get_session(content);
+-
++printf("rtp here 1\n");
+ 			if (action == JINGLE_SESSION_INITIATE &&
+ 					!jingle_rtp_init_media(content)) {
++printf("rtp here 1...1\n");
+ 				/* XXX: send error */
+ 				jabber_iq_send(jingle_session_terminate_packet(
+ 						session, "general-error"));
+ 				g_object_unref(session);
+ 				break;
+ 			}
++printf("rtp here 1...2\n");
+ 
+ 			transport = jingle_transport_parse(
+ 					purple_xmlnode_get_child(xmlcontent, "transport"));
+@@ -591,6 +595,7 @@
+ 			PurpleMedia *media = jingle_rtp_get_media(session);
+ 
+ 			if (media != NULL) {
++printf("JINFEI: ending jingle media here 1\n");
+ 				purple_media_end(media, NULL, NULL);
+ 			}
+ 
+@@ -881,7 +886,9 @@
+ 
+ 		jingle_session_add_content(session, content);
+ 		priv->media_type = g_strdup("audio");
++printf("rtp here 2\n");
+ 		jingle_rtp_init_media(content);
++printf("rtp here 2.1\n");
+ 		g_object_notify_by_pspec(G_OBJECT(content), properties[PROP_MEDIA_TYPE]);
+ 	}
+ 	if (type & PURPLE_MEDIA_VIDEO) {
+@@ -895,7 +902,9 @@
+ 
+ 		jingle_session_add_content(session, content);
+ 		priv->media_type = g_strdup("video");
++printf("rtp here 3\n");
+ 		jingle_rtp_init_media(content);
++printf("rtp here 3.1\n");
+ 		g_object_notify_by_pspec(G_OBJECT(content), properties[PROP_MEDIA_TYPE]);
+ 	}
+ 
+diff -r 7c9c4d700ed2 libpurple/xfer.c
+--- a/libpurple/xfer.c	Thu Sep 19 22:18:57 2019 -0500
++++ b/libpurple/xfer.c	Fri Oct 18 13:49:34 2019 -0400
+@@ -25,6 +25,7 @@
+ #include "enums.h"
+ #include "image-store.h"
+ #include "xfer.h"
++#include "media.h"
+ #include "network.h"
+ #include "notify.h"
+ #include "prefs.h"
+@@ -2365,6 +2366,9 @@
+ 	purple_signal_register(handle, "file-recv-request",
+ 	                     purple_marshal_VOID__POINTER, G_TYPE_NONE, 1,
+ 	                     PURPLE_TYPE_XFER);
++	purple_signal_register(handle, "incoming-call",
++	                     purple_marshal_VOID__POINTER, G_TYPE_NONE, 1,
++	                     PURPLE_TYPE_MEDIA);
+ }
+ 
+ void
+diff -r 7c9c4d700ed2 pidgin/gtkmedia.c
+--- a/pidgin/gtkmedia.c	Thu Sep 19 22:18:57 2019 -0500
++++ b/pidgin/gtkmedia.c	Fri Oct 18 13:49:34 2019 -0400
+@@ -643,11 +643,23 @@
+ 
+ 	gtkmedia->priv->request_type = PURPLE_MEDIA_NONE;
+ 	if (!purple_media_accepted(gtkmedia->priv->media, NULL, NULL)) {
++	    // emit "incoming-call"
++	    //purple_signal_emit(purple_xfers_get_handle(), "file-recv-request", xfer);
++	    //purple_signal_emit(purple_xfers_get_handle(), "incoming-call", gtkmedia->priv->media);
++	   
++	    // poll status if accepted
++	    // always accept for now
++	    if (1) {
++	      pidgin_media_accept_cb(gtkmedia->priv->media, 0);
++	    } else {
++	    //else -> ask
++
+ 		purple_request_accept_cancel(gtkmedia, _("Incoming Call"),
+ 			message, NULL, PURPLE_DEFAULT_ACTION_NONE,
+ 			purple_request_cpar_from_account(account),
+ 			gtkmedia->priv->media, pidgin_media_accept_cb,
+ 			pidgin_media_reject_cb);
++          } 
+ 	}
+ 	pidgin_media_emit_message(gtkmedia, message);
+ 	g_free(message);
+@@ -1050,6 +1062,9 @@
+ 	purple_debug_info("gtkmedia", "state: %d sid: %s name: %s\n",
+ 			state, sid ? sid : "(null)", name ? name : "(null)");
+ 	if (state == PURPLE_MEDIA_STATE_END) {
++printf("JINFEI: media end info: state %d sid: %s name: %s\n",
++			state, sid ? sid : "(null)", name ? name : "(null)");
++
+ 		if (sid != NULL && name != NULL) {
+ 			pidgin_media_remove_widget(gtkmedia, sid, name);
+ 		} else if (sid == NULL && name == NULL) {
