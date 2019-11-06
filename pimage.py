@@ -2,7 +2,7 @@ import sys, math
 import pylab
 import imageio #read video
 from PIL import Image #read image
-import rasl #image alignment
+#import rasl #image alignment
 
 len_d = 60.0 #mm, Panasonic AG-3DA1 HD 3D camera
 focus = 15.0 #mm
@@ -20,9 +20,9 @@ def cal_pos(pix1, pix2):
             j = (j[1], j[0])
 
     #can be derived by openCV edge detection/SURF features
-    print 'Calibration'
+    print ('Calibration')
     for ps in cps:
-        print ps
+        print (ps)
         p1,p2 = ps
         y1, x1 = p1
         y2, x2 = p2
@@ -36,16 +36,16 @@ def cal_pos(pix1, pix2):
         
         #pixel_d is calibrate once only( because f is not consistent with real camera)
         d = len_d*focus*pixel_d/(x1-x2)
-        print "{0:.2f}m {1} {2} {3}".format(d/100, x1, x2, (x2-x1))
+        print ("{0:.2f}m {1} {2} {3}".format(d/100, x1, x2, (x2-x1)))
 
         #calculate x,y (z=d)
 
 def alignment(pix1, pix2):
-    print 'align...'
+    print ('align...')
 
 #given pixel_d, center_offset from above calibration
 def point_pos(pix1, pix2):
-    print '\ncalculate points\' x,y,z'
+    print ('\ncalculate points\' x,y,z')
 
 def image_read(show=False):
     im1 = Image.open('/tmp/a.png') #left
@@ -53,7 +53,7 @@ def image_read(show=False):
     pix1, pix2 = im1.load(), im2.load()
 
     #test calibration point (X/Y revert with imageio), horizion-X
-    print pix1[1150,305]
+#    print pix1[1150,305]
     pix1[912,362]=(0,255,0)
     pix2[920,362]=(0,255,0)
     pix1[1495,560]=(255,0,0)
@@ -72,19 +72,19 @@ def image_read(show=False):
 def test_read():
     filename = sys.argv[1] #3D_33_LEFT.mp4 right
     vid = imageio.get_reader(filename,  'ffmpeg')
-    print vid.get_meta_data()
+    print (vid.get_meta_data())
     nums = [10, 287]
     for num in nums:
         timestamp = float(num)/ vid.get_meta_data()['fps']
-        print timestamp
+        print (timestamp)
         image = vid.get_data(num)
         image = imageio.core.image_as_uint(image)
         fig = pylab.figure()
         fig.suptitle('image #{}'.format(num), fontsize=20)
         pylab.imshow(image)
-        print [i[200:202] for i in image[200:202]]
-        print len(image), len(image[0]), image[305][1149:1152]
-        print image.shape, image.size, image.meta
+#        print [i[200:202] for i in image[200:202]]
+#        print len(image), len(image[0]), image[305][1149:1152]
+#        print image.shape, image.size, image.meta
         imageio.imwrite(sys.argv[2], image)
         break
     #pylab.show()
@@ -94,8 +94,8 @@ def use_pil():
     im = Image.open('/tmp/a.png') #Can be many different formats.
     pix = im.load()
     x,y=200,200
-    print im.size #Get the width and hight of the image for iterating over
-    print pix[x,y] #Get the RGBA Value of the a pixel of an image
+#    print im.size #Get the width and hight of the image for iterating over
+#    print pix[x,y] #Get the RGBA Value of the a pixel of an image
 
 def opencv_dp():
     import numpy as np
@@ -107,7 +107,7 @@ def opencv_dp():
 
     #stereo = cv2.createStereoBM(numDisparities=16, blockSize=15)
     stereo = cv2.StereoBM(ndisparities=16, SADWindowSize=15)
-    print (stereo)
+#    print (stereo)
     disparity = stereo.compute(imgL,imgR)
     plt.imshow(disparity,'gray')
     plt.show()

@@ -1,0 +1,12 @@
+diff --git a/defconfig.tmpl b/defconfig.tmpl
+index ac5d142..1e52725 100644
+--- a/defconfig.tmpl
++++ b/defconfig.tmpl
+@@ -128,6 +128,7 @@ struct config_data config = {
+ 		.panic_reboot = 0,
+ 		.shell = 1,
+ 		.dbgsh = 1,
++		.status = 1,
+ 		.no_intr_intercept = 0,
+ 		.ignore_tsc_invariant = 0,
+ 		.unsafe_nested_virtualization = 0,
