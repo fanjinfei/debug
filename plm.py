@@ -70,18 +70,36 @@ def calculate_distance(w, h, x1, x2, len_d, focus, x_off_center, verbose=False):
         print ("distance lenght {0:.2f}mm, {1} {2} {3}".format(d, x1, x2, delta) )
     return d
 
+def calculate_pos(w, h, x1, y1, focus, z, verbose=False): #from 
+    x = z/focus*(x1-w/2 +center_offset)
+    y = z/focus*(y1-h/2)
+    if verbose:
+        print ("pos xyz {0:.2f}mm, {1:.2f} {2:.2f}".format(x, y, z))
+    return x,y,z
+
 def image_read(show=False):
     im1 = Image.open('/tmp/a.jpg') #left
-    im1.show()
     im2 = Image.open('/tmp/b.jpg') #left
-    im2.show()
+    
+    #display in two windows
+    #im1.show()
+    #im2.show()
     
     pix1, pix2 = im1.load(), im2.load()
 
     #test calibration point (X/Y revert with imageio), horizion-X
+    # left image Y axis is 4 more than right
     #pix1[267,264]=(0,255,0) #marker green  TWO dimension array is pixel
     #pix2[240,260]=(0,255, 0) #marker blue
+    print(pix1[266,264]) # (253, 230, 199)
 
+    fl = calculate_focus(640.0, 400.0, 267, 240, 80.0, 1200.0) #manual measure distance 120.0CM, len_d=8.0CM
+    print("focus is ", fl)
+    
+    z = calculate_distance(640.0, 400.0, 267, 240, 80.0, 400.0, -0.2, verbose=True) # (bed pole)
+    x,y,z = calculate_pos(640.0, 400.0, 267, 264, 400.0, 1203.0, ) #
+    p1 = (x,y,z)
+    print (p1)
     return
 
  
