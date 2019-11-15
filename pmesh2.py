@@ -1,8 +1,13 @@
 from stl import mesh
 import math
 import numpy
-
+from matplotlib import colors as mcolors
 #apt install python3-tk numpy-stl
+#https://github.com/WoLpH/numpy-stl/
+
+def cc(arg):
+#    return mcolors.to_rgba(arg, alpha=0.6)
+    return mcolors.to_rgba(arg, alpha=numpy.random.random())
 
 # Create 3 faces of a cube
 data = numpy.zeros(6, dtype=mesh.Mesh.dtype)
@@ -59,13 +64,36 @@ meshes[3].y += 2
 from matplotlib import pyplot
 from mpl_toolkits import mplot3d
 
+def plot_3D(img, threshold=-400):
+	verts, faces = measure.marching_cubes(img, threshold)
+
+	fig = plt.figure(figsize=(10, 10))
+	ax = fig.add_subplot(111, projection='3d')
+
+	mesh = Poly3DCollection(verts[faces], alpha=0.1)
+	face_color = [0.3, 0.5, 0.8]
+	mesh.set_facecolor(face_color)
+	ax.add_collection3d(mesh)
+
+	ax.set_xlim(0, img.shape[0])
+	ax.set_ylim(0, img.shape[1])
+	ax.set_zlim(0, img.shape[2])
+
+	pyplot.show() 
 # Create a new plot
 figure = pyplot.figure()
 axes = mplot3d.Axes3D(figure)
 
 # Render the cube faces
+facecolors=[cc('r'), cc('g'), cc('b'), cc('y')]
+facecolors=[cc('r'), cc('g'), cc('b'), cc('y')]
 for m in meshes:
-    axes.add_collection3d(mplot3d.art3d.Poly3DCollection(m.vectors))
+  for col in m.vectors:
+    
+    mesh = mplot3d.art3d.Poly3DCollection([col], alpha=0.6)
+    face_color = [numpy.random.random(), numpy.random.random(), numpy.random.random()]
+    mesh.set_facecolor(face_color)
+    axes.add_collection3d(mesh)
 
 # Auto scale to the mesh size
 scale = numpy.concatenate([m.points for m in meshes]).flatten(-1)
