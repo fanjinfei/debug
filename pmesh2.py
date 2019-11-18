@@ -39,13 +39,14 @@ data['vectors'][5] = numpy.array([[0, 0, 0],
 data['vectors'] -= .5
 
 # Generate 4 different meshes so we can rotate them later
-meshes = [mesh.Mesh(data.copy()) for _ in range(4)]
+meshes = [mesh.Mesh(data.copy()) for _ in range(5)]
 
 # Rotate 90 degrees over the Y axis
 meshes[0].rotate([0.0, 0.5, 0.0], math.radians(90))
 
 # Translate 2 points over the X axis
 meshes[1].x += 2
+meshes[4].x += 10
 
 # Rotate 90 degrees over the X axis
 meshes[2].rotate([0.5, 0.0, 0.0], math.radians(90))
@@ -59,7 +60,20 @@ meshes[3].rotate([0.0, 0.5, 0.0], math.radians(90))
 # Translate 2 points over the Y axis
 meshes[3].y += 2
 
+#add more cube to meshes to see the performance 100*100
+es = []
+for x in range(10):
+    for y in range(10):
+        for z in range(10):
+            e = mesh.Mesh(data.copy())
+            e.x += 2*(x+2)
+            e.y += 4*(y+4)
+            e.z += 8*(z+8)
+            #es.append(e)
 
+for e in es:
+    meshes.append(e)
+print(len(meshes))
 # Optionally render the rotated cube faces
 from matplotlib import pyplot
 from mpl_toolkits import mplot3d
@@ -89,7 +103,6 @@ facecolors=[cc('r'), cc('g'), cc('b'), cc('y')]
 facecolors=[cc('r'), cc('g'), cc('b'), cc('y')]
 for m in meshes:
   for col in m.vectors:
-    
     mesh = mplot3d.art3d.Poly3DCollection([col], alpha=0.6)
     face_color = [numpy.random.random(), numpy.random.random(), numpy.random.random()]
     mesh.set_facecolor(face_color)
@@ -97,7 +110,11 @@ for m in meshes:
 
 # Auto scale to the mesh size
 scale = numpy.concatenate([m.points for m in meshes]).flatten(-1)
-axes.auto_scale_xyz(scale, scale, scale)
+print(scale)
+#axes.auto_scale_xyz(scale, scale, scale)
+axes.set_xlim3d(0,15, 2)
+axes.set_ylim3d(0,15)
+axes.set_zlim3d(0,15)
 
 # Show the plot to the screen
 pyplot.show()
