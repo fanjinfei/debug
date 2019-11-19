@@ -4,6 +4,7 @@ import pylab as plt
 from mayavi import mlab # or from enthought.mayavi import mlab
 from mayavi.mlab import *
 from scipy.optimize import newton
+from mayaxes import mayaxes
 import time, os
 
 #apt install libgdal20 python3-gdal pyqt5
@@ -13,7 +14,7 @@ def test_triangular_mesh():
     """An example of a cone, ie a non-regular mesh defined by its
         triangles.
     """
-    n = 8
+    n = 80
     t = np.linspace(-np.pi, np.pi, n)
     z = np.exp(1j * t)
     x = z.real.copy()
@@ -26,24 +27,60 @@ def test_triangular_mesh():
     z = np.r_[1, z]
     t = np.r_[0, t]
 
+    return triangular_mesh(x, y, z, triangles, scalars=t), (x,y,z,triangles, t)
+
+def test_triangular_mesh2(d1=0, d2=0, d3=0):
+    """An example of a cone, ie a non-regular mesh defined by its
+        triangles.
+    """
+    n = 300
+    t = np.linspace(-np.pi, np.pi, n)
+    z = np.exp(1j * t)
+    x = z.real.copy()
+    y = z.imag.copy()
+    z = np.zeros_like(x)
+
+    triangles = [(0, i, i + 1) for i in range(1, n)]
+    x = np.r_[0, x]
+    y = np.r_[0, y]
+    z = np.r_[1, z]
+    t = np.r_[0, t]
+
+    x += d1
+    y += d2
+    z += d3
     return triangular_mesh(x, y, z, triangles, scalars=t)
 
-test_triangular_mesh()    
-mlab.show()
-os._exit()
+def test_triangular_mesh3(x, y, z, tri, t, d1=0, d2=0, d3=0):
+    return triangular_mesh(x+d1, y+d2, z+d3, tri, scalars=t)
 
-mlab.clf()
-phi, theta = np.mgrid[0:np.pi:11j, 0:2*np.pi:11j]
-x = np.sin(phi) * np.cos(theta)
-y = np.sin(phi) * np.sin(theta)
-z = np.cos(phi)
-mlab.mesh(x, y, z)
-mlab.mesh(x, y, z, representation='wireframe', color=(0, 0, 0))
+def test_wireframe():
+    mlab.clf()
+    phi, theta = np.mgrid[0:np.pi:11j, 0:2*np.pi:11j]
+    x = np.sin(phi) * np.cos(theta)
+    y = np.sin(phi) * np.sin(theta)
+    z = np.cos(phi)
+    mlab.mesh(x, y, z)
+    mlab.mesh(x, y, z, representation='wireframe', color=(0, 0, 0))
+
+_, (x1, y1, z1, tri, t) = test_triangular_mesh()    
+for x in range(1,5):
+    for y in range(1,5):
+        for z in range(1,20):
+            pass
+#            test_triangular_mesh2(x*3, y*3 , z*3)
+#            test_triangular_mesh3(x1, y1, z1, tri, t,x*3, y*3 , z*3)
+
+test_triangular_mesh() 
+print("start show")   
+#axes(x_axis_visibility=True, y_axis_visibility=True, z_axis_visibility=True) #only the current obj
+
+mayaxes(title_string='Figure 1: Diminishing polar cosine series', \
+        xlabel='X data',ylabel='Y data',zlabel='Z data')
+
 mlab.show()
+os._exit(0)
 #time.sleep(10)
-
-
-
 
 import gdal
 #from mpl_toolkits.mplot3d import Axes3D
