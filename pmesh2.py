@@ -62,18 +62,40 @@ meshes[3].y += 2
 
 #add more cube to meshes to see the performance 100*100
 es = []
-for x in range(10):
-    for y in range(10):
-        for z in range(10):
+for x in range(5):
+    for y in range(5):
+        for z in range(5):
             e = mesh.Mesh(data.copy())
             e.x += 2*(x+2)
             e.y += 4*(y+4)
             e.z += 8*(z+8)
-            #es.append(e)
+            es.append(e)
 
 for e in es:
     meshes.append(e)
 print(len(meshes))
+
+m2 = []
+for i in range (50): #very slow
+  for j in range(50):
+    d1 = numpy.array([[i, j, 1],[i+1, j+1, 1], [i, j+1, 1]])
+    d2 = numpy.array([[i, j, 1],[i+1, j+1, 1], [i+1, j, 1]])
+    d = numpy.zeros(2, dtype=mesh.Mesh.dtype)
+    d['vectors']=[d1, d2]
+    m2.append(mesh.Mesh(d))
+    
+m2 = []
+d = numpy.zeros(50*50*2, dtype=mesh.Mesh.dtype)
+for i in range (50): #still slow
+  for j in range(50):
+    d1 = numpy.array([[i, j, 1],[i+1, j+1, 1], [i, j+1, 1]])
+    d2 = numpy.array([[i, j, 1],[i+1, j+1, 1], [i+1, j, 1]])
+    d['vectors'][i*50+j] =d1
+    d['vectors'][i*50+j+1] =d2
+m2.append(mesh.Mesh(d))
+
+meshes
+
 # Optionally render the rotated cube faces
 from matplotlib import pyplot
 from mpl_toolkits import mplot3d
@@ -86,7 +108,7 @@ def plot_3D(img, threshold=-400):
 
 	mesh = Poly3DCollection(verts[faces], alpha=0.1)
 	face_color = [0.3, 0.5, 0.8]
-	mesh.set_facecolor(face_color)
+	#mesh.set_facecolor(face_color)
 	ax.add_collection3d(mesh)
 
 	ax.set_xlim(0, img.shape[0])
@@ -105,16 +127,18 @@ for m in meshes:
   for col in m.vectors:
     mesh = mplot3d.art3d.Poly3DCollection([col], alpha=0.6)
     face_color = [numpy.random.random(), numpy.random.random(), numpy.random.random()]
-    mesh.set_facecolor(face_color)
+    #mesh.set_facecolor(face_color)
     axes.add_collection3d(mesh)
 
 # Auto scale to the mesh size
 scale = numpy.concatenate([m.points for m in meshes]).flatten(-1)
 print(scale)
 #axes.auto_scale_xyz(scale, scale, scale)
-axes.set_xlim3d(0,15, 2)
+'''axes.set_xlim3d(0,15, 2)
 axes.set_ylim3d(0,15)
 axes.set_zlim3d(0,15)
+'''
+axes.auto_scale_xyz(scale, scale, scale)
 
 # Show the plot to the screen
 pyplot.show()
