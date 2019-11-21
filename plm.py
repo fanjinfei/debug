@@ -1,10 +1,11 @@
 import sys, math
-import time
+import time,json
 import numpy as np
 import heapq
 from PIL import Image, ImageFilter #Pillow
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
+#from line2d import line2d
 from mpl_toolkits.mplot3d import Axes3D
 numpy = np
 
@@ -100,13 +101,17 @@ def image_read(show=False):
     x,y,z = calculate_pos(640.0, 400.0, 267, 264, 400.0, 1203.0, ) #
     p1 = (x,y,z)
     print (p1)
-    return
-
- 
+    #import pdb; pdb.set_trace()
+    a = [ pix1[x, 264] for x in range(0,640)]
+    b = [ pix2[x, 260] for x in range(0,640)]
+    
+    return a,b
 
 def main():
-    return image_read(True)
-
+    a,b = image_read(True)
+    with open('/tmp/lr.json', 'w') as outfile:
+        json.dump([a,b], outfile)
+    #line2d(a,b)
 if __name__=='__main__':
     main()
     
