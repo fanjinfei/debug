@@ -4,6 +4,26 @@ def read():
         data = json.load(json_file)
         return data
 
+def calculate_d( x1, x2, len_d=80, focus=400, x_off_center=-0.2,w=640, h=480, verbose=False): #from manually marked points to distance
+    x1 = (x1 - w/2 +x_off_center ) #left
+    x2 = (x2 - w/2 -x_off_center ) #right
+    delta = abs(x1-x2)
+    d = len_d*focus/delta
+    if verbose:
+        print ("distance lenght {0:.2f}mm, {1} {2} {3}".format(d, x1, x2, delta) )
+    return d
+    
+# given: matched (x1_r, x1_l) of z1, matched(x2_r, x2_l) of z2
+# if (x1_r-x2_r) != (x1_l - x2_l) : delta is the occlusion
+# make sure z1 (l/r) is both matched (otherwise lost perception here), then x2 is occluded.
+def calulate_occlusion(x1_l, x1_r, x2_l, x2_r, z1, z2, len_d=80, focusn=400): #for re-affirm with length
+    #(x1_l, x2_l).z1 => (x2_r, x2_r)(xx ..) are occluded at z2
+    #assume x1<x2 and x2_l-x1_l > x2_r-x1_r ?
+    delta = (x2_l-x1_l) - (x2_r - x1_r)
+    x3 = x2_l - delta
+    z2_n = len_d*focusn/abs(delta)
+    return z2_n #other side's depth of x2
+    
 def rgb2gray(R,G,B):
     return 0.21*R + 0.72*G + 0.07*B
     
@@ -11,7 +31,7 @@ def match(d1, y1): #d1: right side's first half, y1: full left side
     from scipy.fftpack import fft
     N=320
     y = fft(d1)
-    print (y)
+    print (FFT)
     return
     
 def line2d(a,b): #a: left, b:right
@@ -59,7 +79,9 @@ def plotDis(x,y):
     ax.set_ylim(min(y), max(y))
     plt.show()
 def test():
-    [a,b] = read()
-    line2d(a,b)
+    [a,b, c, d,e, f] = read()
+#    line2d(a,b)
+#    line2d(c,d) #x: 144/118 (l/r)
+    line2d(e,f) #x=88/50
 if __name__ =='__main__':
     test()

@@ -105,12 +105,18 @@ def image_read(show=False):
     a = [ pix1[x, 264] for x in range(0,640)]
     b = [ pix2[x, 260] for x in range(0,640)]
     
-    return a,b
+
+    c = [ pix1[x, 279] for x in range(0,640)]
+    d = [ pix2[x, 275] for x in range(0,640)]
+
+    e = [ pix1[x, 314] for x in range(0,640)]
+    f = [ pix2[x, 310] for x in range(0,640)]
+    return a,b, c,d, e,f
 
 def main():
-    a,b = image_read(True)
+    a,b, c,d, e,f = image_read(True)
     with open('/tmp/lr.json', 'w') as outfile:
-        json.dump([a,b], outfile)
+        json.dump([a,b,c,d, e,f], outfile)
     #line2d(a,b)
 if __name__=='__main__':
     main()
