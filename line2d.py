@@ -1,4 +1,6 @@
 import json
+
+__display = True
 def read():
     with open('/tmp/lr.json') as json_file:
         data = json.load(json_file)
@@ -31,26 +33,41 @@ def match(d1, y1): #d1: right side's first half, y1: full left side
     from scipy.fftpack import fft
     N=320
     y = fft(d1)
-    print (FFT)
     return
+    
+def match_gradient(a,b, ga, gb, matched, occlu_l, occlu_r):
+    #match these significant first
+    return res, n_oc_l, n_oc_r, cont
     
 def line2d(a,b): #a: left, b:right
     x = range(0,640)
     y1 = [ rgb2gray(v[0], v[1], v[2]) for v in a ]
     y2 = [ rgb2gray(v[0], v[1], v[2]) for v in b ]
-    plotDis2(x, y1 , y2) #more tuitive in visual
+    if __display: plotDis2(x, y1 , y2) #more tuitive in visual
     
     d1 = [ y1[i+1]-y1[i] for i in range(0, 639) ]
     d2 = [ y2[i+1]-y2[i] for i in range(0, 639) ]
-    d1 = [ 0 if abs(d1[i])<3 else d1[i] for i in range(0,639) ]
-    d2 = [ 0 if abs(d2[i])<3 else d2[i] for i in range(0,639) ]
-    plotDis2(range(0,639), d1 , d2) #more tuitive in visual
+    d1 = [ 0 if abs(d1[i])<3 else abs(d1[i]) for i in range(0,639) ]
+    d2 = [ 0 if abs(d2[i])<3 else abs(d2[i]) for i in range(0,639) ]
+    if __display: plotDis2(range(0,639), d1 , d2) #more tuitive in visual
     
     #right's left half is all visible in a; a's second half is visible in b.
     # they have overlaps
     # 1. right's left half, sliding through a
-    d1 = [ y2[i] for i in range(0,320)]
-    r1 = match(d1, y1)  
+    #d1 = [ y2[i] for i in range(0,320)]
+    #r1 = match(d1, y1)  
+    
+    matched=[] # [x1, x2, bool(left match), bool (right match) ]
+    occlu_l = [] #[x1, x2], x1<x2
+    occlu_r = [] #[(x1, x2)], x1<x2
+    while True:
+        nm, nl, nr, cont = match_gradient(y1, y2, d1, d2, matched, occlu_l, occlu_r)
+        
+        for x in nm: matched.append(x) #update all
+        for x in nl: occlu_l.append(x)
+        for x in nr: occlu_r.append(x)
+            
+        if not cont: break
     return
 
 def plotDis2(x,y1, y2):
