@@ -3,12 +3,13 @@ from colormath.color_objects import sRGBColor, LabColor
 from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
 
+__display = False
+
 def rgb255_to_clab(a):
     color1_rgb = sRGBColor(a[0]/255.0, a[1]/255.0, a[2]/255.0);
     color1_lab = convert_color(color1_rgb, LabColor);
     return color1_lab
 
-__display = True
 def read():
     with open('/tmp/lr.json') as json_file:
         data = json.load(json_file)
@@ -45,7 +46,6 @@ def match(d1, y1): #d1: right side's first half, y1: full left side
     
 def match_gradient(a,b, ga, gb, matched, occlu_l, occlu_r):
     #match these significant first
-        
     return res, n_oc_l, n_oc_r, cont
     
 def line2d(a,b): #a: left, b:right
@@ -54,7 +54,7 @@ def line2d(a,b): #a: left, b:right
     y2 = [ rgb2gray(v[0], v[1], v[2]) for v in b ]
     yc1 = [ rgb255_to_clab(v) for v in a ]
     yc2 = [ rgb255_to_clab(v) for v in b ]
-    if __display: plotDis2(x, y1 , y2) #more tuitive in visual
+    #if __display: plotDis2(x, y1 , y2) #more tuitive in visual
     
     d1 = [ y1[i+1]-y1[i] for i in range(0, 639) ]
     d2 = [ y2[i+1]-y2[i] for i in range(0, 639) ]
@@ -75,7 +75,9 @@ def line2d(a,b): #a: left, b:right
     occlu_r = [] #[(x1, x2)], x1<x2
     while True:
         nm, nl, nr, cont = match_gradient(y1, y2, d1, d2, matched, occlu_l, occlu_r)
-        
+        if not nm:
+            print('Abandoned this line.')
+            break
         for x in nm: matched.append(x) #update all
         for x in nl: occlu_l.append(x)
         for x in nr: occlu_r.append(x)
