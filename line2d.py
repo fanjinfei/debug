@@ -46,6 +46,7 @@ def match(d1, y1): #d1: right side's first half, y1: full left side
     
 def match_gradient(a,b, ga, gb, matched, occlu_l, occlu_r):
     #match these significant first
+    from pstero import match; res, n_oc_l, n_oc_r, cont = match( a,b, ga, gb, matched, occlu_l, occlu_r)   
     return res, n_oc_l, n_oc_r, cont
     
 def line2d(a,b): #a: left, b:right
@@ -112,8 +113,8 @@ def plotDis(x,y):
     plt.show()
 def test():
     [a,b, c, d,e, f] = read()
-#    line2d(a,b)
-#    line2d(c,d) #x: 144/118 (l/r)
+    line2d(a,b)
+    line2d(c,d) #x: 144/118 (l/r)
     line2d(e,f) #x=88/50
 if __name__ =='__main__':
     test()
