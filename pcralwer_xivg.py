@@ -111,7 +111,7 @@ class Doc():
 def write_csv(filename, rows, header=None):
     outf=open(filename, 'wb')
     outf.write(codecs.BOM_UTF8)
-    writer = unicodecsv.writer(outf, delimiter='\t')
+    writer = unicodecsv.writer(outf, delimiter=',')
 
     if header:
         writer.writerow(header)
@@ -121,6 +121,7 @@ def write_csv(filename, rows, header=None):
 
 def main():
     url = 'https://arxiv.org/list/cs.CL/recent'
+    url = 'https://arxiv.org/list/cs.CL/pastweek?show=250'
     c = get_web_html(None, url).encode('utf-8')
     docs = Doc(url, c)
     res = []
@@ -128,8 +129,9 @@ def main():
         c = get_web_html(None, url).encode('utf-8')
         doc = Doc(url, c)
         title, content = doc.process()
+        content = ' ||| '.join(content.split('. '))
         res.append([title, content])
-    write_csv('/tmp/xivg.csv', res)
+    write_csv('/tmp/xivg.csv', res, header=['Title', 'Description'])
 
 if __name__ == '__main__':    
     main()
