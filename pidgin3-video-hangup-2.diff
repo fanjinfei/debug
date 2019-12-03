@@ -1,0 +1,138 @@
+diff -r fc7b9e4d2d03 libpurple/protocols/jabber/jingle/jingle.c
+--- a/libpurple/protocols/jabber/jingle/jingle.c	Tue Nov 26 00:30:54 2019 -0500
++++ b/libpurple/protocols/jabber/jingle/jingle.c	Tue Dec 03 13:40:04 2019 -0500
+@@ -251,7 +251,7 @@
+ jingle_handle_session_terminate(JingleSession *session, PurpleXmlNode *jingle)
+ {
+ 	jabber_iq_send(jingle_session_create_ack(session, jingle));
+-
++printf("here we receive terminate, remote hangup.\n");
+ 	jingle_session_handle_action(session, jingle,
+ 			JINGLE_SESSION_TERMINATE);
+ 	/* display reason? */
+diff -r fc7b9e4d2d03 libpurple/protocols/jabber/jingle/rtp.c
+--- a/libpurple/protocols/jabber/jingle/rtp.c	Tue Nov 26 00:30:54 2019 -0500
++++ b/libpurple/protocols/jabber/jingle/rtp.c	Tue Dec 03 13:40:04 2019 -0500
+@@ -205,7 +205,7 @@
+ 		jabber_iq_send(jingle_session_terminate_packet(
+ 				session, type == PURPLE_MEDIA_INFO_HANGUP ?
+ 				"success" : "decline"));
+-
++printf("here we hangup, send out terminate.\n");
+ 		g_signal_handlers_disconnect_by_func(G_OBJECT(media),
+ 				G_CALLBACK(jingle_rtp_state_changed_cb),
+ 				session);
+diff -r fc7b9e4d2d03 meson.build
+--- a/meson.build	Tue Nov 26 00:30:54 2019 -0500
++++ b/meson.build	Tue Dec 03 13:40:04 2019 -0500
+@@ -136,8 +136,8 @@
+ 		 'wpurple_lib_dir("purple-@0@")'.format(purple_major_version))
+ 	conf.set('PIDGIN_LIBDIR',
+ 		 'wpurple_lib_dir("pidgin-@0@")'.format(purple_major_version))
+-	conf.set('FINCH_LIBDIR',
+-		 'wpurple_lib_dir("finch-@0@")'.format(purple_major_version))
++#	conf.set('FINCH_LIBDIR',
++#		 'wpurple_lib_dir("finch-@0@")'.format(purple_major_version))
+ 
+ 	conf.set('PURPLE_DATADIR', 'wpurple_data_dir()')
+ 	conf.set('PURPLE_SYSCONFDIR', 'wpurple_sysconf_dir()')
+@@ -155,9 +155,9 @@
+ 	conf.set_quoted('PIDGIN_LIBDIR',
+ 	                join_paths(common_libdir,
+ 	                           'pidgin-@0@'.format(purple_major_version)))
+-	conf.set_quoted('FINCH_LIBDIR',
+-	                join_paths(common_libdir,
+-	                           'finch-@0@'.format(purple_major_version)))
++#	conf.set_quoted('FINCH_LIBDIR',
++#	                join_paths(common_libdir,
++#	                           'finch-@0@'.format(purple_major_version)))
+ endif
+ 
+ abslibdir = join_paths(get_option('prefix'), get_option('libdir'))
+@@ -165,8 +165,8 @@
+ conf.set_quoted('PURPLE_PLUGINDIR', PURPLE_PLUGINDIR)
+ PIDGIN_PLUGINDIR = join_paths(abslibdir, 'pidgin-@0@'.format(purple_major_version))
+ conf.set_quoted('PIDGIN_PLUGINDIR', PIDGIN_PLUGINDIR)
+-FINCH_PLUGINDIR = join_paths(abslibdir, 'finch-@0@'.format(purple_major_version))
+-conf.set_quoted('FINCH_PLUGINDIR', FINCH_PLUGINDIR)
++#FINCH_PLUGINDIR = join_paths(abslibdir, 'finch-@0@'.format(purple_major_version))
++#conf.set_quoted('FINCH_PLUGINDIR', FINCH_PLUGINDIR)
+ 
+ # Check for inet_aton
+ if not IS_WIN32
+@@ -766,7 +766,7 @@
+ INSTALL_PIXMAPS = get_option('pixmaps-install')
+ 
+ # check for gtk-doc
+-ENABLE_DOC = get_option('doc')
++#ENABLE_DOC = get_option('doc')
+ 
+ enable_debug = get_option('console-logging')
+ conf.set('DEBUG', enable_debug)
+@@ -776,9 +776,9 @@
+ 
+ subdir('libpurple')
+ subdir('share/sounds')
+-subdir('finch')
++#subdir('finch')
+ subdir('pidgin')
+-subdir('doc')
++#subdir('doc')
+ 
+ configure_file(output : 'config.h',
+     configuration : conf)
+@@ -788,7 +788,7 @@
+ 
+ message('')
+ message('Build GTK+ UI................. : ' + get_option('gtkui').to_string())
+-message('Build console UI.............. : ' + enable_consoleui.to_string())
++#message('Build console UI.............. : ' + enable_consoleui.to_string())
+ message('Build for X11................. : ' + x11.found().to_string())
+ message('')
+ message('Enable Gestures............... : ' + enable_gestures.to_string())
+@@ -816,7 +816,7 @@
+ message('Enable Introspection...........: ' + enable_introspection.to_string())
+ message('')
+ message('Print debugging messages...... : ' + enable_debug.to_string())
+-message('Generate documentation........ : ' + ENABLE_DOC.to_string())
++#message('Generate documentation........ : ' + ENABLE_DOC.to_string())
+ message('')
+ bindir = join_paths(get_option('prefix'), get_option('bindir'))
+ message('Pidgin will be installed in @0@.'.format(bindir))
+diff -r fc7b9e4d2d03 pidgin/gtkmedia.c
+--- a/pidgin/gtkmedia.c	Tue Nov 26 00:30:54 2019 -0500
++++ b/pidgin/gtkmedia.c	Tue Dec 03 13:40:04 2019 -0500
+@@ -641,11 +641,22 @@
+ 
+ 	gtkmedia->priv->request_type = PURPLE_MEDIA_NONE;
+ 	if (!purple_media_accepted(gtkmedia->priv->media, NULL, NULL)) {
++	    // emit "incoming-call"
++	    //purple_signal_emit(purple_xfers_get_handle(), "file-recv-request", xfer);
++	    //purple_signal_emit(purple_xfers_get_handle(), "incoming-call", gtkmedia->priv->media);
++	   
++	    // poll status if accepted
++	    // always accept for now
++	    if (1) {
++	      pidgin_media_accept_cb(gtkmedia->priv->media, 0);
++	    } else {
++	    //else -> ask
+ 		purple_request_accept_cancel(gtkmedia, _("Incoming Call"),
+ 			message, NULL, PURPLE_DEFAULT_ACTION_NONE,
+ 			purple_request_cpar_from_account(account),
+ 			gtkmedia->priv->media, pidgin_media_accept_cb,
+ 			pidgin_media_reject_cb);
++       }
+ 	}
+ 	pidgin_media_emit_message(gtkmedia, message);
+ 	g_free(message);
+diff -r fc7b9e4d2d03 pidgin/meson.build
+--- a/pidgin/meson.build	Tue Nov 26 00:30:54 2019 -0500
++++ b/pidgin/meson.build	Tue Dec 03 13:40:04 2019 -0500
+@@ -229,6 +229,7 @@
+ 		gnome.generate_gir(libpidgin,
+ 			sources : introspection_sources,
+ 			includes : ['GObject-2.0', 'Gtk-3.0', libpurple_gir[0], talkatu_gir, gplugin_gir, gplugin_gtk_gir],
++#			includes : ['GObject-2.0', 'Gtk-3.0', libpurple_gir[0], gplugin_gir, gplugin_gtk_gir],
+ 			namespace : 'Pidgin',
+ 			symbol_prefix : 'pidgin',
+ 			identifier_prefix : 'Pidgin',
