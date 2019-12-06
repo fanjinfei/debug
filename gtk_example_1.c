@@ -39,9 +39,16 @@ struct _PidginMedia
 	PidginMediaPrivate *priv;
 };
 
+enum {
+	PROP_0,
+	PROP_MEDIA,
+	PROP_SCREENNAME
+};
+
 struct _PidginMediaPrivate
 {
-	void *media; //PurpleMedia
+	gchar *media; //PurpleMedia
+//	GValue screenname;
 	gchar *screenname;
 	gulong level_handler_id;
 
@@ -73,11 +80,92 @@ static GType pidgin_media_get_type(void);
 
 G_DEFINE_TYPE_WITH_PRIVATE(PidginMedia, pidgin_media,
 		GTK_TYPE_APPLICATION_WINDOW);
+static void pidgin_media_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec);
+static void pidgin_media_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec);
+		
 static void
-pidgin_media_class_init (PidginMediaClass *klass) {}
+pidgin_media_class_init (PidginMediaClass *klass) {
+	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+
+//	gobject_class->dispose = pidgin_media_dispose;
+//	gobject_class->finalize = pidgin_media_finalize;
+	gobject_class->set_property = pidgin_media_set_property;
+	gobject_class->get_property = pidgin_media_get_property;
+
+	g_object_class_install_property(gobject_class, PROP_MEDIA,
+//			g_param_spec_object("media",
+			g_param_spec_string("media",
+			"PurpleMedia",
+			"The PurpleMedia associated with this media.",
+			NULL,
+			G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+	g_object_class_install_property(gobject_class, PROP_SCREENNAME,
+			g_param_spec_string("screenname",
+			"Screenname",
+			"The screenname of the user this session is with.",
+			NULL,
+			G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+}
 
 static void
 pidgin_media_init (PidginMedia *media) {}
+
+static void
+pidgin_media_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
+{
+	PidginMedia *media;
+	g_return_if_fail(PIDGIN_IS_MEDIA(object));
+
+	media = PIDGIN_MEDIA(object);
+	switch (prop_id) {
+		case PROP_MEDIA:
+		{
+/*			if (media->priv->media)
+				g_object_unref(media->priv->media);
+			media->priv->media = g_value_dup_object(value);*/
+//			g_free(media->priv->media);
+			//g_value_copy(value, &media->priv->media);
+
+/*
+			g_signal_connect(G_OBJECT(media->priv->media), "error",
+				G_CALLBACK(pidgin_media_error_cb), media);
+			g_signal_connect(G_OBJECT(media->priv->media), "state-changed",
+				G_CALLBACK(pidgin_media_state_changed_cb), media);
+			g_signal_connect(G_OBJECT(media->priv->media), "stream-info",
+				G_CALLBACK(pidgin_media_stream_info_cb), media);*/
+			break;
+		}
+		case PROP_SCREENNAME:
+//			g_free(media->priv->screenname);
+//			media->priv->screenname = g_value_dup_string(value);
+			//g_value_copy(value, &media->priv->screenname);
+			break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+			break;
+	}
+}
+static void
+pidgin_media_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+{
+	PidginMedia *media;
+	g_return_if_fail(PIDGIN_IS_MEDIA(object));
+
+	media = PIDGIN_MEDIA(object);
+
+	switch (prop_id) {
+		case PROP_MEDIA:
+//			g_value_set_object(value, media->priv->media);
+			g_value_set_string(value, media->priv->media);
+			break;
+		case PROP_SCREENNAME:
+			g_value_set_string(value, media->priv->screenname);
+			break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+			break;
+	}
+}
 		
 static void
 print_hello (GtkWidget *widget,
@@ -198,9 +286,23 @@ int main(int argc, char *argv[])
 
     gtk_container_add(GTK_CONTAINER (window), box);
     gtk_container_add(GTK_CONTAINER (win_1), box_1);
+    
+    //PidginMedia *gtkmedia = PIDGIN_MEDIA(media); //third window
+    const gchar *media = "hi";
+    const gchar *screenname= "we";
+    /*GValue media = G_VALUE_INIT, screenname = G_VALUE_INIT;
+    g_value_init (&media, G_TYPE_STRING);
+    g_value_set_static_string (&media, "Hello, world!");
+    g_value_init (&screenname, G_TYPE_STRING);
+    g_value_set_static_string (&screenname, "Hello, world!");*/
+  
+    PidginMedia *gtkmedia = g_object_new(pidgin_media_get_type(),
+					     "media", media,
+					     "screenname", screenname, NULL);
+					     
+    gtk_widget_show(GTK_WIDGET(gtkmedia));
     gtk_widget_show_all (window);
     gtk_widget_show_all (win_1);
-
     gtk_main();
     return(0);
 }
