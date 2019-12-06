@@ -34,7 +34,7 @@ activate (GtkApplication *app,
 }
 
 int
-main (int    argc,
+main_1 (int    argc,
       char **argv)
 {
   GtkApplication *app;
@@ -47,3 +47,50 @@ main (int    argc,
 
   return status;
 }
+
+int main(int argc, char *argv[])
+{
+    GtkWidget *window, *win_1;
+    GtkWidget *myImage;
+    GtkWidget *myButton, *btn;
+    GtkWidget *box, *box_1;
+
+    gtk_init(&argc, &argv);
+    window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_default_size(GTK_WINDOW(window), 300, 250);
+    win_1 = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_default_size(GTK_WINDOW(win_1), 300, 250);
+
+    /*
+    warning: 
+        ‘gtk_vbox_new’ is deprecated 
+        Use 'gtk_box_new' instead
+    */
+    //box = gtk_vbox_new(FALSE, 0);
+    box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    box_1 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+
+    //myImage = gtk_image_new_from_file ("Linux.png");
+
+    myButton = gtk_button_new_with_label("Hello GTK+ from Linux-Buddy");
+    btn = gtk_button_new_with_label("Hello GTK+ from Linux-Buddy 2");
+    g_signal_connect(myButton, "clicked", 
+        G_CALLBACK(print_hello), &i);
+
+    g_signal_connect (window, "destroy", 
+        G_CALLBACK(gtk_main_quit), NULL);
+
+    
+    //gtk_box_pack_start(GTK_BOX(box), myImage, TRUE, TRUE, 5);
+    gtk_box_pack_end(GTK_BOX(box), myButton, TRUE, TRUE, 5);
+    gtk_box_pack_end(GTK_BOX(box_1), btn, TRUE, TRUE, 5);
+
+    gtk_container_add(GTK_CONTAINER (window), box);
+    gtk_container_add(GTK_CONTAINER (win_1), box_1);
+    gtk_widget_show_all (window);
+    gtk_widget_show_all (win_1);
+
+    gtk_main();
+    return(0);
+}
+
