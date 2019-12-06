@@ -1,5 +1,84 @@
 #include <gtk/gtk.h>
 //gcc `pkg-config --cflags gtk+-3.0` -o example-1 example-1.c `pkg-config --libs gtk+-3.0`
+
+/*
+A convenience macro for type implementations, which declares a class initialization function, an instance initialization function (see GTypeInfo for information about these), a static variable named t_n_parent_class pointing to the parent class, and adds private instance data to the type. Furthermore, it defines a *_get_type() function. See G_DEFINE_TYPE_EXTENDED() for an example.
+*/
+
+#define PIDGIN_TYPE_MEDIA            (pidgin_media_get_type())
+#define PIDGIN_MEDIA(obj)            (G_TYPE_CHECK_INSTANCE_CAST((obj), PIDGIN_TYPE_MEDIA, PidginMedia))
+#define PIDGIN_MEDIA_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST((klass), PIDGIN_TYPE_MEDIA, PidginMediaClass))
+#define PIDGIN_IS_MEDIA(obj)         (G_TYPE_CHECK_INSTANCE_TYPE((obj), PIDGIN_TYPE_MEDIA))
+#define PIDGIN_IS_MEDIA_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE((klass), PIDGIN_TYPE_MEDIA))
+#define PIDGIN_MEDIA_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS((obj), PIDGIN_TYPE_MEDIA, PidginMediaClass))
+
+typedef struct _PidginMedia PidginMedia;
+typedef struct _PidginMediaClass PidginMediaClass;
+typedef struct _PidginMediaPrivate PidginMediaPrivate;
+
+typedef enum
+{
+	/* Waiting for response */
+	PIDGIN_MEDIA_WAITING = 1,
+	/* Got request */
+	PIDGIN_MEDIA_REQUESTED,
+	/* Accepted call */
+	PIDGIN_MEDIA_ACCEPTED,
+	/* Rejected call */
+	PIDGIN_MEDIA_REJECTED,
+} PidginMediaState;
+
+struct _PidginMediaClass
+{
+	GtkApplicationWindowClass parent_class;
+};
+
+struct _PidginMedia
+{
+	GtkApplicationWindow parent;
+	PidginMediaPrivate *priv;
+};
+
+struct _PidginMediaPrivate
+{
+	void *media; //PurpleMedia
+	gchar *screenname;
+	gulong level_handler_id;
+
+	GtkBuilder *ui;
+	GtkWidget *menubar;
+	GtkWidget *statusbar;
+
+	GtkWidget *hold;
+	GtkWidget *mute;
+	GtkWidget *pause;
+
+	GtkWidget *send_progress;
+	GHashTable *recv_progressbars;
+
+	PidginMediaState state;
+
+	GtkWidget *display;
+	GtkWidget *send_widget;
+	GtkWidget *recv_widget;
+	GtkWidget *button_widget;
+	GtkWidget *local_video;
+	GHashTable *remote_videos;
+
+	guint timeout_id;
+	//PurpleMediaSessionType request_type;
+};
+
+static GType pidgin_media_get_type(void);
+
+G_DEFINE_TYPE_WITH_PRIVATE(PidginMedia, pidgin_media,
+		GTK_TYPE_APPLICATION_WINDOW);
+static void
+pidgin_media_class_init (PidginMediaClass *klass) {}
+
+static void
+pidgin_media_init (PidginMedia *media) {}
+		
 static void
 print_hello (GtkWidget *widget,
              gpointer   data)
