@@ -82,6 +82,7 @@ static GType pidgin_media_get_type(void);
 
 G_DEFINE_TYPE_WITH_PRIVATE(PidginMedia, pidgin_media,
 		GTK_TYPE_APPLICATION_WINDOW);
+static void pidgin_media_dispose (GObject *object);
 static void pidgin_media_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec);
 static void pidgin_media_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec);
 		
@@ -89,7 +90,7 @@ static void
 pidgin_media_class_init (PidginMediaClass *klass) {
 	GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
 
-//	gobject_class->dispose = pidgin_media_dispose;
+	gobject_class->dispose = pidgin_media_dispose;
 //	gobject_class->finalize = pidgin_media_finalize;
 	gobject_class->set_property = pidgin_media_set_property;
 	gobject_class->get_property = pidgin_media_get_property;
@@ -112,6 +113,15 @@ pidgin_media_class_init (PidginMediaClass *klass) {
 static void
 pidgin_media_init (PidginMedia *media) {
     media->priv = pidgin_media_get_instance_private(media);
+    //gtk_container_add(GTK_CONTAINER(media), vbox); add more widgets
+}
+static void
+pidgin_media_dispose(GObject *media)
+{
+	PidginMedia *gtkmedia = PIDGIN_MEDIA(media);
+	//printf("gtkmedia pidgin_media_dispose\n");
+
+	G_OBJECT_CLASS(pidgin_media_parent_class)->dispose(media);
 }
 
 static void
@@ -171,6 +181,21 @@ pidgin_media_get_property (GObject *object, guint prop_id, GValue *value, GParam
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 			break;
 	}
+}
+
+static void
+close_media (GtkWidget *widget,
+             gpointer   data)
+{
+	PidginMedia *media;
+	GdkWindow *window = NULL;
+	g_return_if_fail(PIDGIN_IS_MEDIA(data));
+
+	media = PIDGIN_MEDIA(data);
+    g_print ("close media \n");
+    gtk_widget_destroy ( GTK_WIDGET(media) );
+    //window->destroy();
+    
 }
 		
 static void
@@ -266,33 +291,7 @@ int main(int argc, char *argv[])
     win_1 = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_default_size(GTK_WINDOW(win_1), 300, 250);
 
-    /*
-    warning: 
-        ‘gtk_vbox_new’ is deprecated 
-        Use 'gtk_box_new' instead
-    */
-    //box = gtk_vbox_new(FALSE, 0);
-    box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-    box_1 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
 
-    //myImage = gtk_image_new_from_file ("Linux.png");
-
-    myButton = gtk_button_new_with_label("Hello GTK+ from Linux-Buddy");
-    btn = gtk_button_new_with_label("Hello GTK+ from Linux-Buddy 2");
-    g_signal_connect(myButton, "clicked", 
-        G_CALLBACK(print_hello), &i);
-
-    g_signal_connect (window, "destroy", 
-        G_CALLBACK(gtk_main_quit), NULL);
-
-    
-    //gtk_box_pack_start(GTK_BOX(box), myImage, TRUE, TRUE, 5);
-    gtk_box_pack_end(GTK_BOX(box), myButton, TRUE, TRUE, 5);
-    gtk_box_pack_end(GTK_BOX(box_1), btn, TRUE, TRUE, 5);
-
-    gtk_container_add(GTK_CONTAINER (window), box);
-    gtk_container_add(GTK_CONTAINER (win_1), box_1);
-    
     //PidginMedia *gtkmedia = PIDGIN_MEDIA(media); //third window
     const gchar *media = "hi";
     const gchar *screenname= "we";
@@ -310,6 +309,36 @@ int main(int argc, char *argv[])
     gchar *gstr;
     g_object_get (gtkmedia, "screenname", &gstr, NULL);
     g_printf("print2 screen name %s\n", gstr);
+
+    /*
+    warning: 
+        ‘gtk_vbox_new’ is deprecated 
+        Use 'gtk_box_new' instead
+    */
+    //box = gtk_vbox_new(FALSE, 0);
+    box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    box_1 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+
+    //myImage = gtk_image_new_from_file ("Linux.png");
+
+    myButton = gtk_button_new_with_label("Hello GTK+ from Linux-Buddy");
+    btn = gtk_button_new_with_label("Hello GTK+ from Linux-Buddy 2");
+    g_signal_connect(myButton, "clicked", 
+        G_CALLBACK(print_hello), &i);
+    g_signal_connect(btn, "clicked", 
+        G_CALLBACK(close_media), gtkmedia);
+
+    g_signal_connect (window, "destroy", 
+        G_CALLBACK(gtk_main_quit), NULL);
+
+    
+    //gtk_box_pack_start(GTK_BOX(box), myImage, TRUE, TRUE, 5);
+    gtk_box_pack_end(GTK_BOX(box), myButton, TRUE, TRUE, 5);
+    gtk_box_pack_end(GTK_BOX(box_1), btn, TRUE, TRUE, 5);
+
+    gtk_container_add(GTK_CONTAINER (window), box);
+    gtk_container_add(GTK_CONTAINER (win_1), box_1);
+    
 					     
     gtk_widget_show(GTK_WIDGET(gtkmedia));
     gtk_widget_show_all (window);
