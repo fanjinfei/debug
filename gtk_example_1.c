@@ -1,3 +1,5 @@
+//#include <glib.h>
+#include <glib/gprintf.h>
 #include <gtk/gtk.h>
 //gcc `pkg-config --cflags gtk+-3.0` -o example-1 example-1.c `pkg-config --libs gtk+-3.0`
 
@@ -108,7 +110,9 @@ pidgin_media_class_init (PidginMediaClass *klass) {
 }
 
 static void
-pidgin_media_init (PidginMedia *media) {}
+pidgin_media_init (PidginMedia *media) {
+    media->priv = pidgin_media_get_instance_private(media);
+}
 
 static void
 pidgin_media_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
@@ -136,8 +140,9 @@ pidgin_media_set_property (GObject *object, guint prop_id, const GValue *value, 
 			break;
 		}
 		case PROP_SCREENNAME:
-//			g_free(media->priv->screenname);
-//			media->priv->screenname = g_value_dup_string(value);
+			g_free(media->priv->screenname);
+			media->priv->screenname = g_value_dup_string(value);
+            g_printf("set screen name %s\n", g_value_dup_string(value));
 			//g_value_copy(value, &media->priv->screenname);
 			break;
 		default:
@@ -159,6 +164,7 @@ pidgin_media_get_property (GObject *object, guint prop_id, GValue *value, GParam
 			g_value_set_string(value, media->priv->media);
 			break;
 		case PROP_SCREENNAME:
+            g_printf("get screen name %s\n",media->priv->screenname);
 			g_value_set_string(value, media->priv->screenname);
 			break;
 		default:
@@ -299,6 +305,11 @@ int main(int argc, char *argv[])
     PidginMedia *gtkmedia = g_object_new(pidgin_media_get_type(),
 					     "media", media,
 					     "screenname", screenname, NULL);
+
+    g_printf("print screen name %s\n", gtkmedia->priv->screenname);
+    gchar *gstr;
+    g_object_get (gtkmedia, "screenname", &gstr, NULL);
+    g_printf("print2 screen name %s\n", gstr);
 					     
     gtk_widget_show(GTK_WIDGET(gtkmedia));
     gtk_widget_show_all (window);
