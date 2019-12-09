@@ -66,8 +66,18 @@ n = 10
 A = mat(random.rand(3, n));
 B = R*A + tile(t, (1, n))
 
+Bx = B.copy()
+rows, cols = Bx.shape
+for i in range(0, rows):
+    for j in range(0, cols):
+        idx = j*rows+j
+#        v = Bx.item(idx) + random.uniform(-0.01, +0.01)
+        Bx[i,j] +=  random.uniform(-0.01, +0.01)
+print("Bx")
+print(Bx)
+print("")
 # Recover R and t
-ret_R, ret_t = rigid_transform_3D(A, B)
+ret_R, ret_t = rigid_transform_3D(A, Bx)
 
 # Compare the recovered R and t with the original
 B2 = (ret_R*A) + tile(ret_t, (1, n))
@@ -102,7 +112,8 @@ print("")
 
 print("RMSE:", rmse)
 
-if rmse < 1e-5:
+#if rmse < 1e-5:
+if rmse < 1e-2:
     print("Everything looks good!\n");
 else:
     print("Hmm something doesn't look right ...\n");
