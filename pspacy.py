@@ -6,8 +6,8 @@ try:
     nlp = spacy.load("en_core_web_lg")
     #nlp = spacy.load("en_core_web_md")
     #nlp = spacy.load("en_core_web_sm")
-    print(en.meta["labels"]["parser"]) #token.dep_ (amod, nsubj, etc)
-    print(en.meta["labels"]["tagger"]) #token.pos_ (VERB, NOUN, ADP, etc)
+    print(nlp.meta["labels"]["parser"]) #token.dep_ (amod, nsubj, etc)
+    print(nlp.meta["labels"]["tagger"]) #token.pos_ (VERB, NOUN, ADP, etc)
 except:
     print('python -m spacy download en_core_web_sm')
     sys.exit(0)
@@ -16,7 +16,9 @@ doc = nlp("Apple is looking at buying U.K. startup for $1 billion")
 for token in doc:
     print(token.text, token.lemma_, token.pos_, token.tag_, token.dep_,
             token.shape_, token.is_alpha, token.is_stop)
-
+for ent in doc.ents:
+    print(ent.text, ent.start_char, ent.end_char, ent.label_)
+    
 #displacy.serve(doc, style="dep")            
 print("\n")
 
@@ -35,6 +37,14 @@ def printree(root):
     print('', end= ' ], ')
 
 [printree(sent.root) for sent in doc.sents]
+
+train_data = [
+    ("Who is Chaka Khan?", [(7, 17, "PERSON")]),
+    ("I like London and Berlin.", [(7, 13, "LOC"), (18, 24, "LOC")]),
+]
+
+doc = Doc(nlp.vocab, ["rats", "make", "good", "pets"])
+gold = GoldParse(doc, entities=["U-ANIMAL", "O", "O", "O"])
 
 '''
 >>> print(en.meta["labels"]["parser"])
