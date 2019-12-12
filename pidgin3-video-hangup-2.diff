@@ -1,6 +1,42 @@
+diff -r fc7b9e4d2d03 libpurple/media.c
+--- a/libpurple/media.c	Tue Nov 26 00:30:54 2019 -0500
++++ b/libpurple/media.c	Thu Dec 12 09:33:37 2019 -0500
+@@ -600,7 +600,7 @@
+ 		g_signal_emit(media, purple_media_signals[STATE_CHANGED],
+ 				0, PURPLE_MEDIA_STATE_END,
+ 				stream->session->id, stream->participant);
+-
++printf("free session 1\n");
+ 		media->priv->streams =
+ 				g_list_remove(media->priv->streams, stream);
+ 
+@@ -631,6 +631,7 @@
+ 		g_signal_emit(media, purple_media_signals[STATE_CHANGED],
+ 				0, PURPLE_MEDIA_STATE_END,
+ 				session->id, NULL);
++printf("free session 2\n");
+ 
+ 		g_hash_table_remove(media->priv->sessions, session->id);
+ 		purple_media_session_free(session);
+@@ -662,6 +663,7 @@
+ 		g_signal_emit(media, purple_media_signals[STATE_CHANGED],
+ 				0, PURPLE_MEDIA_STATE_END,
+ 				NULL, participant);
++printf("free session 3\n");
+ 
+ 		if (link != NULL) {
+ 			g_free(link->data);
+@@ -678,6 +680,7 @@
+ 		g_signal_emit(media, purple_media_signals[STATE_CHANGED],
+ 				0, PURPLE_MEDIA_STATE_END,
+ 				NULL, NULL);
++printf("free session 4\n");
+ 		g_object_unref(media);
+ 		return;
+ 	}
 diff -r fc7b9e4d2d03 libpurple/protocols/jabber/jingle/jingle.c
 --- a/libpurple/protocols/jabber/jingle/jingle.c	Tue Nov 26 00:30:54 2019 -0500
-+++ b/libpurple/protocols/jabber/jingle/jingle.c	Tue Dec 03 13:40:04 2019 -0500
++++ b/libpurple/protocols/jabber/jingle/jingle.c	Thu Dec 12 09:33:37 2019 -0500
 @@ -251,7 +251,7 @@
  jingle_handle_session_terminate(JingleSession *session, PurpleXmlNode *jingle)
  {
@@ -12,7 +48,7 @@ diff -r fc7b9e4d2d03 libpurple/protocols/jabber/jingle/jingle.c
  	/* display reason? */
 diff -r fc7b9e4d2d03 libpurple/protocols/jabber/jingle/rtp.c
 --- a/libpurple/protocols/jabber/jingle/rtp.c	Tue Nov 26 00:30:54 2019 -0500
-+++ b/libpurple/protocols/jabber/jingle/rtp.c	Tue Dec 03 13:40:04 2019 -0500
++++ b/libpurple/protocols/jabber/jingle/rtp.c	Thu Dec 12 09:33:37 2019 -0500
 @@ -205,7 +205,7 @@
  		jabber_iq_send(jingle_session_terminate_packet(
  				session, type == PURPLE_MEDIA_INFO_HANGUP ?
@@ -24,7 +60,7 @@ diff -r fc7b9e4d2d03 libpurple/protocols/jabber/jingle/rtp.c
  				session);
 diff -r fc7b9e4d2d03 meson.build
 --- a/meson.build	Tue Nov 26 00:30:54 2019 -0500
-+++ b/meson.build	Tue Dec 03 13:40:04 2019 -0500
++++ b/meson.build	Thu Dec 12 09:33:37 2019 -0500
 @@ -136,8 +136,8 @@
  		 'wpurple_lib_dir("purple-@0@")'.format(purple_major_version))
  	conf.set('PIDGIN_LIBDIR',
@@ -99,9 +135,59 @@ diff -r fc7b9e4d2d03 meson.build
  message('')
  bindir = join_paths(get_option('prefix'), get_option('bindir'))
  message('Pidgin will be installed in @0@.'.format(bindir))
+diff -r fc7b9e4d2d03 pidgin/gtkblist.c
+--- a/pidgin/gtkblist.c	Tue Nov 26 00:30:54 2019 -0500
++++ b/pidgin/gtkblist.c	Thu Dec 12 09:33:37 2019 -0500
+@@ -1514,6 +1514,7 @@
+ 				PIDGIN_STOCK_TOOLBAR_AUDIO_CALL,
+ 				G_CALLBACK(gtk_blist_menu_audio_call_cb), buddy);
+ 		}
++printf("video call from main buddy list's right click menu.");
+ 		if (caps & PURPLE_MEDIA_CAPS_AUDIO_VIDEO) {
+ 			pidgin_new_menu_item(menu, _("Audio/_Video Call"),
+ 				PIDGIN_STOCK_TOOLBAR_VIDEO_CALL,
+diff -r fc7b9e4d2d03 pidgin/gtkconv.c
+--- a/pidgin/gtkconv.c	Tue Nov 26 00:30:54 2019 -0500
++++ b/pidgin/gtkconv.c	Thu Dec 12 09:33:37 2019 -0500
+@@ -908,7 +908,7 @@
+ 	PidginConvWindow *win = (PidginConvWindow *)data;
+ 	PurpleConversation *conv = pidgin_conv_window_get_active_conversation(win);
+ 	PurpleAccount *account = purple_conversation_get_account(conv);
+-
++printf("local start video call from conversation windows menu\n");
+ 	purple_protocol_initiate_media(account,
+ 			purple_conversation_get_name(conv),
+ 			action == win->menu->audio_call ? PURPLE_MEDIA_AUDIO :
 diff -r fc7b9e4d2d03 pidgin/gtkmedia.c
 --- a/pidgin/gtkmedia.c	Tue Nov 26 00:30:54 2019 -0500
-+++ b/pidgin/gtkmedia.c	Tue Dec 03 13:40:04 2019 -0500
++++ b/pidgin/gtkmedia.c	Thu Dec 12 09:33:37 2019 -0500
+@@ -320,7 +320,7 @@
+ 			G_N_ELEMENTS(media_action_entries), media);
+ 
+ 	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+-	gtk_container_add(GTK_CONTAINER(media), vbox);
++	gtk_container_add(GTK_CONTAINER(media), vbox); // add to container
+ 
+ 	media->priv->statusbar = gtk_statusbar_new();
+ 	gtk_box_pack_end(GTK_BOX(vbox), media->priv->statusbar,
+@@ -329,7 +329,7 @@
+ 			0, _("Calling..."));
+ 	gtk_widget_show(media->priv->statusbar);
+ 
+-	media->priv->menubar = setup_menubar(media);
++	media->priv->menubar = setup_menubar(media); // create with builder
+ 	gtk_box_pack_start(GTK_BOX(vbox), media->priv->menubar,
+ 			FALSE, TRUE, 0);
+ 
+@@ -339,7 +339,7 @@
+ 	gtk_box_pack_start(GTK_BOX(vbox), media->priv->display,
+ 			TRUE, TRUE, PIDGIN_HIG_BOX_SPACE);
+ 	gtk_widget_show(vbox);
+-
++printf("here we display the video call window (vbox).\n");
+ 	g_signal_connect(G_OBJECT(media), "delete-event",
+ 			G_CALLBACK(pidgin_media_delete_event_cb), media);
+ 
 @@ -641,11 +641,22 @@
  
  	gtkmedia->priv->request_type = PURPLE_MEDIA_NONE;
@@ -125,9 +211,24 @@ diff -r fc7b9e4d2d03 pidgin/gtkmedia.c
  	}
  	pidgin_media_emit_message(gtkmedia, message);
  	g_free(message);
+@@ -1048,12 +1059,13 @@
+ 	purple_debug_info("gtkmedia", "state: %d sid: %s name: %s\n",
+ 			state, sid ? sid : "(null)", name ? name : "(null)");
+ 	if (state == PURPLE_MEDIA_STATE_END) {
++printf("gtkmedia free session sid:%s, name:%s\n", sid, name);
+ 		if (sid != NULL && name != NULL) {
+ 			pidgin_media_remove_widget(gtkmedia, sid, name);
+ 		} else if (sid == NULL && name == NULL) {
+ 			pidgin_media_emit_message(gtkmedia,
+ 					_("The call has been terminated."));
+-			gtk_widget_destroy(GTK_WIDGET(gtkmedia));
++			gtk_widget_destroy(GTK_WIDGET(gtkmedia)); // should call this if remote hangup
+ 		}
+ 	} else if (state == PURPLE_MEDIA_STATE_NEW &&
+ 			sid != NULL && name != NULL) {
 diff -r fc7b9e4d2d03 pidgin/meson.build
 --- a/pidgin/meson.build	Tue Nov 26 00:30:54 2019 -0500
-+++ b/pidgin/meson.build	Tue Dec 03 13:40:04 2019 -0500
++++ b/pidgin/meson.build	Thu Dec 12 09:33:37 2019 -0500
 @@ -229,6 +229,7 @@
  		gnome.generate_gir(libpidgin,
  			sources : introspection_sources,
