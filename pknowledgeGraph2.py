@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 nlp = spacy.load('en_core_web_sm')
+pd.set_option('display.max_colwidth', 200)
+# %matplotlib inline
 
 def learn_spacy():
     doc = nlp("The 22-year-old recently won ATP Challenger tournament.")
@@ -25,11 +27,37 @@ def learn_spacy():
 
     for tok in doc:
       print(tok.text, "...", tok.dep_)
+
+def create_subgraph(root, g, parent=None):
+    if parent == None:
+        parent = g.add_node(kind="st") #sentence root
+    print(str(root))
+    node = g.add_node(kind=root.pos_, name=str(root))
+    g.add_edge(parent, node, dep=str(root.dep_))
+    for child in root.children:
+        create_subgraph(child, g, node)
+    if parent.kind == 'st':
+        return parent
+
+def reduce_subgraph(parent, g): #the 'st' node
+    # reduce and conj for noun and verb
+    for node in parent.out_():
+        reduce_subgraph(node, g)
       
-
-
-    pd.set_option('display.max_colwidth', 200)
-    # %matplotlib inline
+def clause_coref():
+    doc = nlp('tell me about people and animals in konoha who have wind style chakra and are above jonin level')
+    #doc =nlp('I give him the book and tell him what to do next.')  #TODO
+    #doc = nlp('people in konoha have wind style chakra and we are above jonin level')
+    for tok in doc:
+      print(tok.text, "...", tok.dep_)
+    [printree(sent.root) for sent in doc.sents]
+    g = LocalMemoryGraph()
+    g_sts = [create_subgraph(sent.root, g) for sent in doc.sents] #graph sentences
+    [ reduce_subgraph(p, g) for p in g_sts]
+    gv = gv_graph(g, 'name', 'name', 'dep')
+    gv.view()
+    
+    #displacy.serve(doc, style='dep') #style='ent', replace it with a lmdb 
 
 def build_kgraph():
     sts = pd.read_csv("wiki_sentences_v2.csv")
@@ -59,19 +87,12 @@ def build_kgraph():
     print( list(g.E().limit(10)) )
 
     print( list (g.V().inV().limit(10)) ) #outV, bothV, outE inE bothE, in_ out_ both_
+    # out_ = outE().outV(), in_ = inE().inV(); both_ = out_ + in_
     print( list(g.E().limit(10)) )
     
     gv = gv_graph(g, 'attr', 'attr', 'attr')
     gv.view()
     #import pdb; pdb.set_trace()
-    
-    G=nx.from_pandas_edgelist(kg_df[kg_df['edge']=="composed by"], "source", "target", 
-                          edge_attr=True, create_using=nx.MultiDiGraph())
-
-    plt.figure(figsize=(12,12))
-    pos = nx.spring_layout(G, k = 0.5) # k regulates the distance between nodes
-    nx.draw(G, with_labels=True, node_color='skyblue', node_size=1500, edge_cmap=plt.cm.Blues, pos = pos)
-    plt.show()
 
 def gv_graph(g, src_attr='attr', dst_attr='attr', edge_attr='attr'):
     # This may raise an exception
@@ -83,19 +104,34 @@ def gv_graph(g, src_attr='attr', dst_attr='attr', edge_attr='attr'):
     edge_ids = set()
     for node in g.V():
         node_id = node.get_id()
+        node_attr = node.data().get(src_attr, '_None') 
         if not node_id in node_ids:
-            G.node(node.data().get(src_attr, '_None'))
+            G.node(node_attr)
             node_ids.add(node_id)
         for out_edge, out_node in zip(node.outE(), node.outV()):
             out_edge_id = out_edge.get_id()
             out_node_id = out_node.get_id()
+            out_node_attr = out_node.data().get(dst_attr, '_None')
+            out_edge_attr = out_edge.data().get(edge_attr, '_None')
             if not out_node_id in node_ids:
-                G.node(out_node.data().get(dst_attr, '_None'))
+                G.node(out_node_attr)
                 node_ids.add(out_node_id)
             if not out_edge_id in edge_ids:
-                G.edge(node.attr, out_node.attr, label=out_edge.data().get(edge_attr, '_None'))
+                G.edge(node_attr, out_node_attr, label=out_edge_attr)
                 edge_ids.add(out_edge_id)
-    return G        
+    return G   
+def printree(root, islast=False):
+    total = sum(1 for _ in root.children)
+    if  total==0:
+        print('"'+str(root)+'(' + str(root.pos_)+', ' + str(root.dep_)+')"', end=' ' if islast else ', ')
+        return
+    print('"'+str(root)+'('+ str(root.pos_)+', '+str(root.dep_)+')"', end=', [ ')
+    count = 0
+    for child in root.children:
+        count += 1
+        printree(child, count==total)
+    print('', end= ' ] ' if islast else ' ], ')
+     
 def test():
 
   # import wikipedia sentences
@@ -235,7 +271,8 @@ def get_entities(sent):
   
 def main():
     #test()
-    build_kgraph()
+    #build_kgraph()
+    clause_coref()
     
 if __name__ == '__main__':
     main()
