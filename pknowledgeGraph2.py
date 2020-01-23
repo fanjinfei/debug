@@ -14,6 +14,8 @@ from grapheekdb.backends.data.localmem import LocalMemoryGraph
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
+#Spacy == 2.2.3 version
+
 nlp = spacy.load('en_core_web_sm')
 pd.set_option('display.max_colwidth', 200)
 # %matplotlib inline
@@ -39,13 +41,86 @@ def create_subgraph(root, g, parent=None):
     if parent.kind == 'st':
         return parent
 
-def reduce_subgraph(parent, g): #the 'st' node
-    # reduce and conj for noun and verb
-    for node in parent.out_():
-        reduce_subgraph(node, g)
-      
+def reduce_subgraph_set(parent, g): #the 'st' node
+    # reduce and conj for noun, adj and verb, create a SET node
+    def get_parallel(node, res):
+        e1 = list(node.inE())[0]
+        p = list(node.in_())[0]
+        nres = list(p.out_(dep=e1.dep))
+        if len(nres)>0:
+            for r in nres:
+                if r != node: res.append(r)
+    def get_conj(node, res):
+        nres = list(node.out_(dep='conj'))
+        if len(nres)>0:
+            for r in nres: res.append(r) 
+            for r in nres:
+                get_conj(r, res)
+    def get_cc(node):
+        ccs = list(node.out_(dep='cc'))
+        if len(ccs) >0:
+            return ccs[0]
+        else:
+            for i in list(node.out_(dep='conj')):
+                res = get_cc(i)
+                if res:
+                    return res
+        return None
+            
+    conj_nodes = []
+    get_conj(parent, conj_nodes)
+    cc = get_cc(parent)
+    s_node = None
+    def rebuild():
+        #import pdb; pdb.set_trace()
+        #replace the conj_nodes[0] with 'set' node, 'name'=cc.name, and edges 'contain' to all the nodes, 
+        s_node = g.add_node(kind='_set', name='__'+cc.name)
+        up_node = list(parent.in_())[0]
+        data = list(parent.inE())[0].data()
+        g.add_edge(up_node, s_node, **data)
+        
+        #remove current node's inE
+        e = list(parent.inE())[0]
+        e.remove()
+        g.add_edge(s_node, parent, dep="contain")
+        
+        #remove the conj edge
+        for i in conj_nodes:
+            e = list(i.inE())[0]
+            e.remove()
+            g.add_edge(s_node, i, dep="contain")
+        
+        #remove cc node
+        cc.remove()
+        
+        #ambiguity -->? <sometimes not needed here, depends on the context and meaning(!)
+        #move parent's out_() to s_node
+        if parent.kind not in ['AUX', 'VERB']: #these sub_nodes are directly related to parent
+            for i in parent.out_():
+                e = list(i.inE())[0]
+                data = e.data()
+                g.add_edge(s_node, i, **data)
+                e.remove()
+        return s_node
+    if len(conj_nodes):  #conj_nodes[0] != parent
+        s_node = rebuild()
+    #other cc nodes, such as 'nsubj', no 'conj' for parent
+    elif cc:
+         get_parallel(parent, conj_nodes)
+         if len(conj_nodes):
+             s_node = rebuild()
+             #import pdb; pdb.set_trace()
+             pass
+    if s_node:
+        reduce_subgraph_set(s_node, g)
+    #if parent.outE().count():
+    for node in list(parent.out_()): # late eval, will miss the remvoed child
+#    for node in parent.out_(): #get early evaluated first, removed child will be itered
+        reduce_subgraph_set(node, g)
+
 def clause_coref():
-    doc = nlp('tell me about people and animals in konoha who have wind style chakra and are above jonin level')
+    doc = nlp('He and she tell me about people, bird and animals in konoha who have wind style chakra and are red and above jonin level')
+    #doc = nlp('tell me about people, bird and animals in konoha who have wind style chakra and are red and above jonin level')
     #doc =nlp('I give him the book and tell him what to do next.')  #TODO
     #doc = nlp('people in konoha have wind style chakra and we are above jonin level')
     for tok in doc:
@@ -53,11 +128,11 @@ def clause_coref():
     [printree(sent.root) for sent in doc.sents]
     g = LocalMemoryGraph()
     g_sts = [create_subgraph(sent.root, g) for sent in doc.sents] #graph sentences
-    [ reduce_subgraph(p, g) for p in g_sts]
+    [ reduce_subgraph_set(p, g) for p in g_sts]
     gv = gv_graph(g, 'name', 'name', 'dep')
     gv.view()
     
-    #displacy.serve(doc, style='dep') #style='ent', replace it with a lmdb 
+    displacy.serve(doc, style='dep') #style='ent', replace it with a lmdb 
 
 def build_kgraph():
     sts = pd.read_csv("wiki_sentences_v2.csv")
@@ -76,7 +151,7 @@ def build_kgraph():
     kg_df = pd.DataFrame({'source':source, 'target':target, 'edge':relations})
     for index, row in kg_df.iterrows():
         edge = row['edge']
-        src = g.add_node(attr = row['source'])
+        src = g.add_node(attr = row['source']) #src.update(m=1, n=2) or **args
         target = g.add_node(attr = row['target'])
         g.add_edge(src, target, attr = edge)
         if index>10: break
@@ -104,14 +179,14 @@ def gv_graph(g, src_attr='attr', dst_attr='attr', edge_attr='attr'):
     edge_ids = set()
     for node in g.V():
         node_id = node.get_id()
-        node_attr = node.data().get(src_attr, '_None') 
+        node_attr = node.data().get(src_attr, '_None') + str(node_id) + ' ' + node.kind
         if not node_id in node_ids:
             G.node(node_attr)
             node_ids.add(node_id)
         for out_edge, out_node in zip(node.outE(), node.outV()):
             out_edge_id = out_edge.get_id()
             out_node_id = out_node.get_id()
-            out_node_attr = out_node.data().get(dst_attr, '_None')
+            out_node_attr = out_node.data().get(dst_attr, '_None') + str(out_node_id) + ' ' +out_node.kind
             out_edge_attr = out_edge.data().get(edge_attr, '_None')
             if not out_node_id in node_ids:
                 G.node(out_node_attr)
