@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 #Spacy == 2.2.3 version
 
-nlp = spacy.load('en_core_web_sm')
+nlp = spacy.load('en_core_web_lg')
 pd.set_option('display.max_colwidth', 200)
 # %matplotlib inline
 
@@ -40,7 +40,41 @@ def create_subgraph(root, g, parent=None):
         create_subgraph(child, g, node)
     if parent.kind == 'st':
         return parent
+def parse_question(st, g, res): #yes/no, what,when
+    pass
+def inference_qestion(st, g): #set (and/or, numbers), predicates (no tense for now)
+    pass
 
+def join_subgraph(st1, st2, g): #recoginize pron/entity in st2, replace it with node in st1
+    def conn_1(st1, node, g, refs): #connect node to st1
+        if st1.kind == 'PRON' and st1.name.lower() in refs:
+            if st1.out_(dep='__ref').count() ==0:
+                entity = g.add_node(kind='entity', name=st1.name.lower())
+                g.add_edge(st1, entity, dep='__ref')
+            else:
+                entity = next(st1.out_(dep='__ref')) #same as list()[0]
+            g.add_edge(node, entity, dep='__ref')
+            return
+        for c in st1.out_():
+            conn_1(c, node, g, refs)
+    def check(st1, node, g): #node is a pron
+        reflect= [ ('i', 'me'), () ]
+        src = node.name.lower()
+        refs = ()
+        for i in reflect:
+            if src in i:
+                refs = i
+                break
+        if not refs:
+            pass #todo: it/he,that this
+        else:
+            conn_1(st1, node, g, refs)
+    if st2.kind=='PRON' and st2.out_().count() == 0:
+        check(st1, st2, g)
+        return
+    for c in st2.out_():
+        join_subgraph(st1, c, g)
+    
 def reduce_subgraph_set(parent, g): #the 'st' node
     # reduce and conj for noun, adj and verb, create a SET node
     def get_parallel(node, res):
@@ -128,11 +162,26 @@ def clause_coref():
     [printree(sent.root) for sent in doc.sents]
     g = LocalMemoryGraph()
     g_sts = [create_subgraph(sent.root, g) for sent in doc.sents] #graph sentences
-    [ reduce_subgraph_set(p, g) for p in g_sts]
+    [ reduce_subgraph_set(p, g) for p in g_sts] #pipeline - 0
+
+    doc2 = nlp('Now I know konoha')
+    g_sts2 = [create_subgraph(sent.root, g) for sent in doc2.sents] #graph sentences
+    [ reduce_subgraph_set(p, g) for p in g_sts2]
+    
+    join_subgraph(g_sts[0], g_sts2[0], g) #pipeline -1
+    
+    
+    doc3 = nlp('Do you know konoha?')
+    g_sts3 = [create_subgraph(sent.root, g) for sent in doc3.sents] #graph sentences
+    [ reduce_subgraph_set(p, g) for p in g_sts3]
+    interests = {}
+    parse_question(g_sts3[0], g, interests)
+    
+    #answer question (this is the context(Q->A), should accumulate)
+
     gv = gv_graph(g, 'name', 'name', 'dep')
     gv.view()
-    
-    displacy.serve(doc, style='dep') #style='ent', replace it with a lmdb 
+    displacy.serve(doc3, style='dep') #style='ent', replace it with a lmdb 
 
 def build_kgraph():
     sts = pd.read_csv("wiki_sentences_v2.csv")
