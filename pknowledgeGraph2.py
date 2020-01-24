@@ -34,7 +34,9 @@ def create_subgraph(root, g, parent=None):
     if parent == None:
         parent = g.add_node(kind="st") #sentence root
     print(str(root))
-    node = g.add_node(kind=root.pos_, name=str(root))
+    #node = g.add_node(kind=root.pos_, name=str(root))
+    #g.add_edge(parent, node, dep=str(root.dep_))
+    node = g.add_node(kind=root.pos_, name=str(root.lemma_))
     g.add_edge(parent, node, dep=str(root.dep_))
     for child in root.children:
         create_subgraph(child, g, node)
