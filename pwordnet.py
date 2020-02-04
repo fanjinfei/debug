@@ -68,7 +68,10 @@ def test3():
 
 def build_verb_graph():
     g = LocalMemoryGraph()
-    g.add_node_index('name')
+    g.add_node_index('name') # can be combined/filter like add('name', 'kind', thema='a') g.remove_node_index('my_id')
+    g.add_node_index('name', 'kind', thema='a')
+    print (g.get_node_indexes())
+    #g.add_edge_index('dep') g.remove_edge_index
     for sn in wn.all_synsets(pos='v'):
         rs = [str(rsn)[8:-2] for rsn in sn.root_hypernyms()][0]
         ks = str(sn)[8:-2]
