@@ -10,16 +10,19 @@ import networkx as nx
 from graphviz import Digraph
 import pandas as pd
 from grapheekdb.backends.data.localmem import LocalMemoryGraph
+from pwordnet import build_verb_graph
 
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 #Spacy == 2.2.3 version
-
+print("loading spacy large...")
 nlp = spacy.load('en_core_web_lg')
 pd.set_option('display.max_colwidth', 200)
+print("loading wn verb ...")
+vg = build_verb_graph()
 # %matplotlib inline
-
+print("started.")
 def learn_spacy():
     doc = nlp("The 22-year-old recently won ATP Challenger tournament.")
 
