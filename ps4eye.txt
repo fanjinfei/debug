@@ -28,11 +28,17 @@ apt-get --assume-yes install libgles1-mesa
 apt-get --assume-yes remove libgles1-mesa-dev
 apt-get --assume-yes install libgles1-mesa-dev
 
+ sudo ln -s /usr/lib/arm-linux-gnueabihf/glib-2.0/include/glibconfig.h  /usr/include/glib-2.0/
+
 2. clone PS4EYECam; git checkout cdd5f6d . (for cget)
   mkdir ../ps4
   cd ../ps4
   cmake ../PS4EYECam
   ( uncomment the better_enums line on error) , re-run cmake
+  (modify Cmakefile.txt  of path
+     /usr/lib/arm-linux-gnueabihf/mali-egl/
+    and egl lib
+  )
 
 3. make
   executable  -> PS4Eye

@@ -1,6 +1,5 @@
 import numpy as np
 from numpy import sin,cos,pi,sqrt # makes the code more readable
-import pylab as plt
 from mayavi import mlab # or from enthought.mayavi import mlab
 from mayavi.mlab import *
 from scipy.optimize import newton
